@@ -431,7 +431,7 @@ html[data-theme="dark"] body.theme-dark{
   <div class="drawer-body" id="drawerItems"></div>
 
   <div class="drawer-form">
-    <div class="form-row" id="orderTypeRow" style="display:none">
+    <div class="form-row" id="orderTypeRow">
       <label>Order Type</label>
       <div class="order-type-btns">
         <button class="order-type-btn active" id="btnDine" onclick="setOrderType('dine-in')">🍽 Dine-In</button>
@@ -477,6 +477,7 @@ html[data-theme="dark"] body.theme-dark{
     <div class="big-emoji">🎉</div>
     <h2>Order Placed!</h2>
     <p id="successMsg">Your order is confirmed.</p>
+    <a id="trackLink" href="customer.html" style="display:none;margin:16px auto 0;padding:12px 22px;border-radius:999px;background:#e8420e;color:#fff;font-weight:800;text-decoration:none">Track the courier</a>
     <button onclick="location.reload()">Order More</button>
   </div>
 </div>
@@ -781,8 +782,9 @@ async function placeOrder() {
   if (orderType === "dine-in" && !table) return alert("Please enter table number");
   if (orderType === "delivery" && !addr) return alert("Please enter delivery address");
 
+  let firstDelivery = null;
   for (const item of cart) {
-    await fetch(`${API}/orders`, {
+    const res = await fetch(`${API}/orders`, {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
@@ -792,11 +794,18 @@ async function placeOrder() {
         notes, quantity:item.qty
       })
     });
+    const data = await res.json().catch(() => ({}));
+    if (!firstDelivery && orderType === "delivery" && data.order_id) firstDelivery = data;
   }
   closeDrawer();
   const total = cart.reduce((a,c)=>a+c.price*c.qty,0);
   document.getElementById("successMsg").textContent =
-    orderType==="dine-in" ? `Table ${table} — €${total.toFixed(2)} total 🍽` : `Delivery to ${addr} — €${total.toFixed(2)} 🚗`;
+    orderType==="dine-in" ? `Table ${table} — €${total.toFixed(2)} total 🍽` : `Delivery to ${addr} — about ${firstDelivery && firstDelivery.eta_minutes ? firstDelivery.eta_minutes + " min" : "20 min"} 🚗`;
+  const trackLink = document.getElementById("trackLink");
+  if (firstDelivery) {
+    trackLink.href = "customer.html?track=" + encodeURIComponent(firstDelivery.order_id);
+    trackLink.style.display = "inline-block";
+  }
   document.getElementById("successOverlay").classList.add("open");
   cart=[];updateCartUI();
 }

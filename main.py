@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session, joinedload
 from jose import jwt
-import os, uuid
+import os, uuid, math, json, urllib.parse
 
 import models
 from database import engine, SessionLocal
@@ -44,6 +44,12 @@ def _migrate(db):
         ("users",    "phone",              "VARCHAR"),
         ("users",    "phone_code",         "VARCHAR"),
         ("users",    "phone_code_expires", "VARCHAR"),
+        ("orders",   "dest_lat",           "REAL"),
+        ("orders",   "dest_lng",           "REAL"),
+        ("orders",   "courier_lat",        "REAL"),
+        ("orders",   "courier_lng",        "REAL"),
+        ("orders",   "eta_minutes",        "INTEGER"),
+        ("orders",   "courier_name",       "VARCHAR"),
     ]
     for table, col, typedef in pairs:
         if not has(table, col):
@@ -430,6 +436,61 @@ def get_all_services(db: Session = Depends(get_db)):
 
 # ============= ORDERS =============
 
+def _haversine_km(lat1, lng1, lat2, lng2):
+    radius = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlng / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(a))
+
+
+def _eta_minutes(lat1, lng1, lat2, lng2):
+    if None in (lat1, lng1, lat2, lng2):
+        return None
+    km = _haversine_km(lat1, lng1, lat2, lng2)
+    # Bike pace in town, plus a couple of minutes to hand the bag over.
+    return max(4, int(round(km / 18 * 60)) + 2)
+
+
+def _geocode(query):
+    if not query or not str(query).strip():
+        return None
+    url = "https://nominatim.openstreetmap.org/search?" + urllib.parse.urlencode({
+        "q": query, "format": "json", "limit": 1,
+    })
+    try:
+        import subprocess
+        out = subprocess.check_output(
+            ["curl", "-fsS", "--max-time", "5", "-A", "PyUpOrder/1.0 (food delivery)", url],
+            timeout=7,
+        )
+        data = json.loads(out.decode())
+        if not data:
+            return None
+        return float(data[0]["lat"]), float(data[0]["lon"])
+    except Exception:
+        return None
+
+
+def _track_dict(order):
+    return {
+        "id": order.id,
+        "status": order.status,
+        "order_type": order.order_type,
+        "delivery_address": order.delivery_address,
+        "store_name": order.store.name if order.store else "",
+        "service_name": order.service.name if order.service else "",
+        "customer_name": order.customer_name,
+        "dest_lat": order.dest_lat,
+        "dest_lng": order.dest_lng,
+        "courier_lat": order.courier_lat,
+        "courier_lng": order.courier_lng,
+        "eta_minutes": order.eta_minutes,
+        "courier_name": order.courier_name,
+    }
+
+
 @app.post("/orders")
 def create_order(data: dict, db: Session = Depends(get_db)):
     service = db.query(models.Service).filter(models.Service.id == data["service_id"]).first()
@@ -442,16 +503,87 @@ def create_order(data: dict, db: Session = Depends(get_db)):
         customer_name=data.get("customer_name"), customer_phone=data.get("customer_phone"),
         notes=data.get("notes"), quantity=data.get("quantity", 1)
     )
+    if order.order_type == "delivery" and order.delivery_address:
+        point = _geocode(order.delivery_address) or _geocode(order.delivery_address + ", Croatia")
+        if point:
+            order.dest_lat, order.dest_lng = point
+            order.courier_lat = point[0] + 0.018
+            order.courier_lng = point[1] + 0.012
+            order.eta_minutes = _eta_minutes(order.courier_lat, order.courier_lng, point[0], point[1])
+        else:
+            order.eta_minutes = 20
     db.add(order); db.commit()
-    return {"message": "Order created", "order_id": order.id}
+    return {"message": "Order created", "order_id": order.id, "eta_minutes": order.eta_minutes}
 
 
 @app.get("/orders")
 def get_my_orders(db: Session = Depends(get_db), user=Depends(get_current_user)):
     orders = db.query(models.Order).filter(models.Order.user_id == user.id).all()
     return [{"id": o.id, "status": o.status, "service_name": o.service.name,
-             "store_name": o.store.name, "price": o.service.price, "created_at": o.created_at}
+             "store_name": o.store.name, "price": o.service.price, "created_at": o.created_at,
+             "order_type": o.order_type, "eta_minutes": o.eta_minutes}
             for o in orders]
+
+
+@app.get("/orders/{order_id}/track")
+def track_order(order_id: str, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return _track_dict(order)
+
+
+@app.get("/deliveries")
+def list_deliveries(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    orders = (db.query(models.Order)
+              .filter(models.Order.order_type == "delivery")
+              .filter(models.Order.status != "Delivered")
+              .all())
+    rows = []
+    for order in orders:
+        row = _track_dict(order)
+        row["customer_phone"] = order.customer_phone
+        row["notes"] = order.notes
+        row["quantity"] = order.quantity
+        rows.append(row)
+    return rows
+
+
+@app.post("/orders/{order_id}/location")
+def courier_location(order_id: str, data: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.order_type != "delivery":
+        raise HTTPException(status_code=400, detail="This order is not a delivery")
+    try:
+        lat = float(data["lat"])
+        lng = float(data["lng"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="A map position is required")
+    order.courier_lat = lat
+    order.courier_lng = lng
+    if data.get("name"):
+        order.courier_name = str(data["name"])[:80]
+    if order.status != "Delivered":
+        order.status = "On the way"
+    order.eta_minutes = _eta_minutes(lat, lng, order.dest_lat, order.dest_lng) or order.eta_minutes or 20
+    db.commit()
+    return _track_dict(order)
+
+
+@app.post("/orders/{order_id}/delivered")
+def mark_delivered(order_id: str, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order.status = "Delivered"
+    order.eta_minutes = 0
+    if order.dest_lat is not None:
+        order.courier_lat = order.dest_lat
+        order.courier_lng = order.dest_lng
+    db.commit()
+    return _track_dict(order)
 
 
 @app.get("/store-orders/{store_id}")

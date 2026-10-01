@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Text, Boolean
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Text, Boolean, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -96,6 +96,12 @@ class Order(Base):
     notes            = Column(Text, nullable=True)
     quantity         = Column(Integer, default=1)
     created_at       = Column(DateTime, default=datetime.utcnow)
+    dest_lat         = Column(Float, nullable=True)
+    dest_lng         = Column(Float, nullable=True)
+    courier_lat      = Column(Float, nullable=True)
+    courier_lng      = Column(Float, nullable=True)
+    eta_minutes      = Column(Integer, nullable=True)
+    courier_name     = Column(String, nullable=True)
     user    = relationship("User", back_populates="orders", foreign_keys=[user_id])
     service = relationship("Service", back_populates="orders")
     store   = relationship("Store")

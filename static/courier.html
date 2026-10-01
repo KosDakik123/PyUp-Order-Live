@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PyUp — Courier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --bg:#f7f7f4; --ink:#0f0f0f; --muted:#8a8a80; --accent:#e8420e; --card:#fff; --line:#e9e9e4; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"DM Sans",sans-serif; background:var(--bg); color:var(--ink); }
+  a { color:inherit; }
+  header { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; position:sticky; top:0; background:rgba(247,247,244,.92); backdrop-filter:blur(16px); z-index:5; }
+  .logo { font-family:Syne,sans-serif; font-weight:800; font-size:1.2rem; text-decoration:none; }
+  .logo b { color:var(--accent); }
+  header a.back { font-weight:700; font-size:.85rem; }
+  main { max-width:980px; margin:0 auto; padding:12px 14px 40px; display:grid; gap:14px; }
+  @media (min-width:800px) { main { grid-template-columns:340px 1fr; align-items:start; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px; }
+  h1 { font-family:Syne,sans-serif; font-size:1.6rem; letter-spacing:-.6px; margin:0 0 6px; }
+  p.lead { margin:0 0 14px; color:var(--muted); }
+  label { display:block; font-size:.72rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:10px 0 4px; }
+  input { width:100%; padding:12px; border-radius:12px; border:1.5px solid var(--line); font:inherit; font-size:16px; }
+  button { font:inherit; font-weight:800; border:none; border-radius:999px; padding:12px 16px; cursor:pointer; }
+  .go { background:var(--accent); color:#fff; width:100%; margin-top:12px; }
+  .job { border:1px solid var(--line); border-radius:16px; padding:12px; margin-top:10px; animation:in .4s ease both; }
+  .job.on { border-color:var(--accent); box-shadow:0 8px 24px rgba(232,66,14,.15); }
+  .job strong { display:block; font-family:Syne,sans-serif; }
+  .job small { color:var(--muted); }
+  .row { display:flex; gap:8px; margin-top:10px; }
+  .row button { flex:1; }
+  .ghost { background:#fff; border:1.5px solid var(--line); }
+  #map { height:320px; border-radius:18px; overflow:hidden; background:#d5dee6; }
+  .eta { font-family:Syne,sans-serif; font-size:2rem; letter-spacing:-1px; margin:8px 0 0; }
+  .err { color:#b91c1c; font-size:.85rem; min-height:1.2em; }
+  @keyframes in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion:reduce) { .job { animation:none; } }
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="customer.html">Py<b>Up</b></a>
+  <a class="back" href="customer.html">Stores</a>
+</header>
+<main>
+  <section>
+    <div class="card" id="gate">
+      <h1>Courier</h1>
+      <p class="lead">Sign in, pick a delivery, and the customer sees you move on the map.</p>
+      <div id="loginBox">
+        <label>Username</label>
+        <input id="user" autocomplete="username">
+        <label>Password</label>
+        <input id="pass" type="password" autocomplete="current-password">
+        <p class="err" id="loginErr"></p>
+        <button class="go" id="loginBtn" type="button">Sign in</button>
+      </div>
+      <div id="work" hidden>
+        <label>Your name on the map</label>
+        <input id="rider" placeholder="Your name">
+        <div id="jobs"></div>
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <div id="etaLine" class="eta">—</div>
+    <p class="lead" id="etaNote">Choose a delivery to see the route.</p>
+    <div id="map"></div>
+  </section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
+<script>
+const tokenKey = "customerToken";
+const jobsEl = document.getElementById("jobs");
+const map = L.map("map", { zoomControl: false }).setView([45.815, 15.982], 12);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap"
+}).addTo(map);
+setTimeout(() => map.invalidateSize(), 250);
+let marker, dest, line, jobs = [], active = null, ride = null, watch = null;
+
+function authHeaders() {
+  return { "Authorization": "Bearer " + localStorage.getItem(tokenKey), "Content-Type": "application/json" };
+}
+function showWork() {
+  document.getElementById("loginBox").hidden = true;
+  document.getElementById("work").hidden = false;
+  document.getElementById("rider").value = localStorage.getItem("courierName") || "";
+  loadJobs();
+}
+document.getElementById("loginBtn").onclick = async () => {
+  const err = document.getElementById("loginErr");
+  err.textContent = "";
+  const res = await fetch(API + "/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: document.getElementById("user").value.trim(),
+      password: document.getElementById("pass").value
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { err.textContent = data.detail || "Could not sign in."; return; }
+  localStorage.setItem(tokenKey, data.access_token);
+  localStorage.setItem("customerName", document.getElementById("user").value.trim());
+  showWork();
+};
+if (localStorage.getItem(tokenKey)) showWork();
+
+async function loadJobs() {
+  const res = await fetch(API + "/deliveries", { headers: authHeaders() });
+  if (res.status === 401) {
+    localStorage.removeItem(tokenKey);
+    document.getElementById("loginBox").hidden = false;
+    document.getElementById("work").hidden = true;
+    return;
+  }
+  jobs = await res.json();
+  if (!jobs.length) {
+    jobsEl.innerHTML = "<p class='lead'>No deliveries waiting. When someone orders food to an address, it shows up here.</p>";
+    return;
+  }
+  jobsEl.innerHTML = jobs.map((job, i) => `
+    <article class="job" data-i="${i}">
+      <strong>${job.service_name || "Order"} · ${job.store_name || ""}</strong>
+      <small>${job.delivery_address || "No address"} · ${job.customer_name || "Guest"}${job.customer_phone ? " · " + job.customer_phone : ""}</small>
+      <div class="row">
+        <button class="go" type="button" data-start="${job.id}">Start route</button>
+        <button class="ghost" type="button" data-done="${job.id}">Delivered</button>
+      </div>
+    </article>`).join("");
+}
+jobsEl.addEventListener("click", (event) => {
+  const start = event.target.closest("[data-start]");
+  const done = event.target.closest("[data-done]");
+  if (start) begin(start.dataset.start);
+  if (done) finish(done.dataset.done);
+});
+
+function focusJob(job) {
+  active = job;
+  document.querySelectorAll(".job").forEach(el => el.classList.toggle("on", el.querySelector("[data-start]")?.dataset.start === job.id));
+  const mins = job.eta_minutes == null ? "Soon" : job.eta_minutes + " min";
+  document.getElementById("etaLine").textContent = mins;
+  document.getElementById("etaNote").textContent = (job.courier_name || "You") + " → " + (job.delivery_address || "the customer");
+  if (job.dest_lat == null) return;
+  const b = [job.dest_lat, job.dest_lng];
+  const a = [job.courier_lat ?? b[0] + 0.01, job.courier_lng ?? b[1] + 0.01];
+  if (!marker) {
+    marker = L.circleMarker(a, { radius: 9, color: "#e8420e", fillColor: "#e8420e", fillOpacity: 1 }).addTo(map);
+    dest = L.circleMarker(b, { radius: 8, color: "#0f172a", fillColor: "#fff", fillOpacity: 1, weight: 3 }).addTo(map);
+    line = L.polyline([a, b], { color: "#e8420e", weight: 4 }).addTo(map);
+  } else {
+    marker.setLatLng(a);
+    dest.setLatLng(b);
+    line.setLatLngs([a, b]);
+  }
+  map.fitBounds(L.latLngBounds([a, b]).pad(0.35));
+  setTimeout(() => map.invalidateSize(), 150);
+}
+
+async function pushSpot(id, lat, lng) {
+  const name = document.getElementById("rider").value.trim() || "Courier";
+  localStorage.setItem("courierName", name);
+  const res = await fetch(API + "/orders/" + id + "/location", {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ lat, lng, name })
+  });
+  if (!res.ok) return;
+  const job = await res.json();
+  focusJob(job);
+}
+
+function begin(id) {
+  const job = jobs.find(item => item.id === id);
+  if (!job) return;
+  if (ride) clearInterval(ride);
+  if (watch && navigator.geolocation) navigator.geolocation.clearWatch(watch);
+  focusJob(job);
+  if (navigator.geolocation) {
+    watch = navigator.geolocation.watchPosition(
+      (pos) => pushSpot(id, pos.coords.latitude, pos.coords.longitude),
+      () => simulate(job),
+      { enableHighAccuracy: true, maximumAge: 4000 }
+    );
+    return;
+  }
+  simulate(job);
+}
+
+function simulate(job) {
+  const bLat = job.dest_lat, bLng = job.dest_lng;
+  if (bLat == null) return;
+  let lat = job.courier_lat ?? bLat + 0.018;
+  let lng = job.courier_lng ?? bLng + 0.012;
+  const steps = 18;
+  let n = 0;
+  ride = setInterval(() => {
+    n += 1;
+    const t = Math.min(1, n / steps);
+    pushSpot(job.id, lat + (bLat - lat) * t, lng + (bLng - lng) * t);
+    if (t >= 1) clearInterval(ride);
+  }, 3000);
+}
+
+async function finish(id) {
+  if (ride) clearInterval(ride);
+  if (watch && navigator.geolocation) navigator.geolocation.clearWatch(watch);
+  await fetch(API + "/orders/" + id + "/delivered", { method: "POST", headers: authHeaders() });
+  document.getElementById("etaLine").textContent = "Arrived";
+  loadJobs();
+}
+</script>
+</body>
+</html>
