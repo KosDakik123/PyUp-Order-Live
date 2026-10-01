@@ -75,30 +75,31 @@ async function login() {
 
 // ============= STORES =============
 
+function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[ch]))
+}
+
 async function loadStores() {
     const res = await fetch(`${API}/stores`)
     const data = await res.json()
 
     stores.innerHTML = ""
 
-    if (data.length === 0) {
-        stores.innerHTML = "<p class='col-12 text-muted'>No stores yet. Create yours!</p>"
+    if (!Array.isArray(data) || data.length === 0) {
+        stores.innerHTML = "<p class='empty'>No stores yet.</p>"
         return
     }
 
     data.forEach(store => {
         stores.innerHTML += `
-        <div class="col-md-4 mb-3">
-            <div class="card p-3 h-100">
-                <h5>🏪 ${store.name}</h5>
-                <p class="text-muted flex-grow-1">${store.description}</p>
-                <small class="text-muted mb-2">Owner: ${store.owner_name}</small>
-                <a href="store-view.html?store=${store.id}" target="_blank"
-                   class="btn btn-primary btn-sm">
-                    View Store & Services
-                </a>
-            </div>
-        </div>
+        <article class="tile">
+            <h2>${esc(store.name)}</h2>
+            <p>${esc(store.description)}</p>
+            <small>Owner · ${esc(store.owner_name)}</small>
+            <a href="store-view.html?store=${encodeURIComponent(store.id)}">Open store</a>
+        </article>
         `
     })
 }
@@ -157,28 +158,23 @@ async function loadAllServices() {
 
     services.innerHTML = ""
 
-    if (data.length === 0) {
-        services.innerHTML = "<p class='col-12 text-muted'>No services available yet.</p>"
+    if (!Array.isArray(data) || data.length === 0) {
+        services.innerHTML = "<p class='empty'>No menu items yet.</p>"
         return
     }
 
     data.forEach(s => {
         const imgHtml = s.image_url
-            ? `<img src="${s.image_url}" style="width:100%;height:160px;object-fit:cover;border-radius:8px;" class="mb-2">`
+            ? `<img src="${esc(s.image_url)}" alt="">`
             : ""
         services.innerHTML += `
-        <div class="col-md-4 mb-3">
-            <div class="card p-3 h-100">
-                ${imgHtml}
-                <h5>${s.name}</h5>
-                <p>${s.description}</p>
-                <p><strong>€${s.price}</strong></p>
-                <small class="text-muted">from: ${s.store_name}</small>
-                <a href="store-view.html?store=${s.store_id}" class="btn btn-outline-primary btn-sm mt-2">
-                    View Store
-                </a>
-            </div>
-        </div>
+        <article class="tile">
+            ${imgHtml}
+            <h2>${esc(s.name)}</h2>
+            <p>${esc(s.description)}</p>
+            <div class="meta"><strong>€${esc(s.price)}</strong><small>${esc(s.store_name)}</small></div>
+            <a href="store-view.html?store=${encodeURIComponent(s.store_id)}">Open store</a>
+        </article>
         `
     })
 }
@@ -268,20 +264,21 @@ async function loadMyOrders() {
     const data = await res.json()
     orders.innerHTML = ""
 
-    if (data.length === 0) {
-        orders.innerHTML = "<tr><td colspan='6' class='text-center text-muted'>No orders yet</td></tr>"
+    if (!res.ok || !Array.isArray(data) || data.length === 0) {
+        orders.innerHTML = "<tr><td colspan='6' class='empty'>No orders yet.</td></tr>"
         return
     }
 
     data.forEach(o => {
+        const done = o.status === "Completed"
         orders.innerHTML += `
         <tr>
-            <td>${o.id.substring(0, 8)}…</td>
-            <td>${o.store_name}</td>
-            <td>${o.service_name}</td>
-            <td>€${o.price}</td>
-            <td><span class="badge bg-${o.status === 'Completed' ? 'success' : 'warning'}">${o.status}</span></td>
-            <td>${new Date(o.created_at).toLocaleDateString()}</td>
+            <td>${esc(String(o.id).substring(0, 8))}</td>
+            <td>${esc(o.store_name)}</td>
+            <td>${esc(o.service_name)}</td>
+            <td>€${esc(o.price)}</td>
+            <td><span class="pill ${done ? "ok" : "wait"}">${esc(o.status)}</span></td>
+            <td>${esc(new Date(o.created_at).toLocaleDateString())}</td>
         </tr>
         `
     })
