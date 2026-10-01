@@ -8,7 +8,7 @@ var API;
   if (host === "localhost" || host === "127.0.0.1") {
     API = "http://127.0.0.1:8000";
   } else if (host.endsWith("github.io")) {
-    API = "https://pyuporder.tail74d12c.ts.net";
+    API = "https://macbook-air-od-david.tail74d12c.ts.net";
   } else {
     API = location.origin;
   }
