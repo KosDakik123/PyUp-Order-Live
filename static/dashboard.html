@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dashboard — PyUp</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -49,11 +50,25 @@
   .tile p { margin:0; color:var(--muted); font-size:.9rem; line-height:1.4; flex:1; }
   .tile small { color:var(--muted); }
   .tile a, .meta { margin-top:auto; }
-  .tile a {
-    align-self:flex-start; text-decoration:none; font-weight:700; font-size:.86rem;
-    background:var(--ink); color:#fff; border-radius:999px; padding:7px 12px;
+  .tile { transition: transform .35s cubic-bezier(.2,.8,.2,1), box-shadow .35s; animation: tile-in .5s cubic-bezier(.2,.8,.2,1) both; }
+  .tile:hover { transform: translateY(-6px); box-shadow: 0 16px 30px rgba(232,66,14,.14); }
+  .tile:nth-child(2){animation-delay:.04s}.tile:nth-child(3){animation-delay:.08s}
+  .tile:nth-child(4){animation-delay:.12s}.tile:nth-child(n+5){animation-delay:.16s}
+  @keyframes tile-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+  .tile a.go {
+    align-self:flex-start; text-decoration:none; font-weight:800; font-size:.86rem;
+    background:#e8420e; color:#fff; border-radius:999px; padding:9px 14px;
+    box-shadow:0 8px 16px rgba(232,66,14,.35);
+    display:inline-flex; align-items:center; gap:6px;
+    transition: transform .22s cubic-bezier(.2,.8,.2,1);
   }
-  .tile a:hover { background:var(--accent); }
+  .tile a.go span { display:inline-block; animation: nudge 1.8s ease-in-out infinite; }
+  .tile a.go:hover { background:#e8420e; transform: translateY(-2px) scale(1.05); }
+  .tile a.go:hover span { animation:none; transform: translateX(4px); }
+  @keyframes nudge { 0%,70%,100%{ transform:translateX(0); } 82%{ transform:translateX(4px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .tile, .tile a.go span { animation: none; }
+  }
   .meta { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
   .meta strong { font-family:Syne,sans-serif; }
   .meta small { color:var(--muted); }

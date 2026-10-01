@@ -98,7 +98,7 @@ async function loadStores() {
             <h2>${esc(store.name)}</h2>
             <p>${esc(store.description)}</p>
             <small>Owner · ${esc(store.owner_name)}</small>
-            <a href="store-view.html?store=${encodeURIComponent(store.id)}">Open store</a>
+            <a class="go" href="store-view.html?store=${encodeURIComponent(store.id)}">View store <span>→</span></a>
         </article>
         `
     })
@@ -173,7 +173,7 @@ async function loadAllServices() {
             <h2>${esc(s.name)}</h2>
             <p>${esc(s.description)}</p>
             <div class="meta"><strong>€${esc(s.price)}</strong><small>${esc(s.store_name)}</small></div>
-            <a href="store-view.html?store=${encodeURIComponent(s.store_id)}">Open store</a>
+            <a class="go" href="store-view.html?store=${encodeURIComponent(s.store_id)}">View store <span>→</span></a>
         </article>
         `
     })
