@@ -21,7 +21,22 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 body.theme-dark{--bg:#111;--surface:#1e1e1e;--text:#f0f0f0;--muted:#aaa;--border:#333}
 body.theme-minimal{--bg:#fff;--surface:#fff;--text:#111;--muted:#666;--border:#eee}
 body.theme-warm{--bg:#fdf6ec;--surface:#fff;--text:#2d1e0f;--muted:#8a6a4a;--border:#e8d5bb}
-[data-theme="dark"] body{--bg:#0f172a;--surface:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--border:#334155}
+html[data-theme="dark"] body,
+html[data-theme="dark"] body.theme-modern,
+html[data-theme="dark"] body.theme-minimal,
+html[data-theme="dark"] body.theme-warm,
+html[data-theme="dark"] body.theme-dark{
+  --bg:#0f172a;--surface:#1e293b;--text:#f1f5f9;--muted:#94a3b8;--border:#334155;
+  background:var(--bg);color:var(--text);color-scheme:dark;
+}
+[data-theme="dark"] .qty-btn,
+[data-theme="dark"] .order-type-btn,
+[data-theme="dark"] .drawer-close{color:var(--text)}
+[data-theme="dark"] .item-card:hover{box-shadow:0 16px 34px rgba(0,0,0,.45)}
+[data-theme="dark"] .store-nav,
+[data-theme="dark"] .welcome-banner,
+[data-theme="dark"] .drawer,
+[data-theme="dark"] .success-box{color:var(--text)}
 
 /* ── STORE HEADER ────────────────────────── */
 .store-header{position:relative;overflow:hidden;min-height:220px;
@@ -194,8 +209,18 @@ body.theme-warm{--bg:#fdf6ec;--surface:#fff;--text:#2d1e0f;--muted:#8a6a4a;--bor
 .btn-add:hover{transform:translateY(-3px) scale(1.06)}
 .btn-add:active{transform:scale(.94)}
 .btn-add.added{background:#17a2b8}
-.item-card{transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s}
-.item-card:hover{transform:translateY(-6px); box-shadow:0 14px 28px rgba(0,0,0,.08)}
+.item-card{transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s; animation:item-in .45s cubic-bezier(.2,.8,.2,1) both}
+.item-card:nth-child(2){animation-delay:.05s}
+.item-card:nth-child(3){animation-delay:.1s}
+.item-card:nth-child(n+4){animation-delay:.14s}
+.item-card:hover{transform:translateY(-6px); box-shadow:0 14px 28px rgba(0,0,0,.12)}
+.item-card .item-img{transition:transform .45s cubic-bezier(.2,.8,.2,1)}
+.item-card:hover .item-img{transform:scale(1.05)}
+@keyframes item-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .item-card,.btn-add{animation:none}
+  .item-card:hover,.btn-add:hover,.item-card:hover .item-img{transform:none}
+}
 @media(max-width:640px){
   .btn-add,.item-card{cursor:pointer}
   .btn-add{min-height:44px;padding:12px 20px}
@@ -453,7 +478,8 @@ function applyTheme(s) {
   document.documentElement.style.setProperty("--primary",   s.primary_color   || "#667eea");
   document.documentElement.style.setProperty("--secondary", s.secondary_color || "#764ba2");
   document.documentElement.style.setProperty("--accent",    s.accent_color    || "#28a745");
-  document.body.className = `theme-${s.theme || "modern"}`;
+  ["theme-modern","theme-dark","theme-minimal","theme-warm"].forEach(name => document.body.classList.remove(name));
+  document.body.classList.add(`theme-${s.theme || "modern"}`);
 }
 
 // ── Load store ────────────────────────────
