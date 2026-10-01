@@ -3,8 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="static/favicon.svg" type="image/svg+xml">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PyUp Order</title>
+<script>
+(function () {
+  if (location.hostname === "kosdakik123.github.io") return;
+  location.replace("https://kosdakik123.github.io/PyUp-Order-Live/");
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <style>
@@ -61,11 +67,23 @@
   article p { margin:0; color:var(--muted); line-height:1.45; }
   .num { font-family:Syne,sans-serif; color:var(--accent); font-size:.85rem; letter-spacing:.08em; }
   footer { padding:22px 6vw 32px; color:var(--muted); font-size:.85rem; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .hero > div { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+  .phone { animation: floaty 5.5s ease-in-out infinite; }
+  @keyframes rise { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:none; } }
+  @keyframes floaty { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
   @media (max-width: 860px) {
+    header { padding:14px 16px; }
     header nav .ghost { display:none; }
-    .hero, .band-in { grid-template-columns:1fr; }
+    .hero, .band-in { grid-template-columns:1fr; gap:28px; }
+    .hero { padding:32px 16px 48px; }
     .phone { min-height:0; }
-    h1 { letter-spacing:-1.6px; }
+    h1 { letter-spacing:-1.2px; }
+    .actions a { flex:1 1 140px; text-align:center; }
+    .band-in { padding:28px 16px; }
+    footer { padding:18px 16px 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hero > div, .phone { animation:none; }
   }
 </style>
 </head>
