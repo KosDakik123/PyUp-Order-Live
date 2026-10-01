@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
+    <style>body{background:var(--app-bg,#f8f9fa);color:var(--app-text,#212529)} [data-theme="dark"] .card{background:var(--app-surface);border-color:var(--app-border);color:var(--app-text)} [data-theme="dark"] .table{color:var(--app-text)}</style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+        <span class="navbar-brand">⚙️ Admin Panel</span>
+        <div>
+            <button id="themeBtn" type="button" class="btn btn-outline-light btn-sm me-2" title="Toggle dark mode">🌙</button>
+            <a href="qr-generator.html" class="btn btn-success btn-sm me-2">📱 Generate QR Code</a>
+            <button onclick="logout()" class="btn btn-danger btn-sm">Logout</button>
+        </div>
+    </div>
+</nav>
+<script src="theme.js"></script>
+<script>window.themeInit();var b=document.getElementById('themeBtn');if(b){b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙';b.onclick=function(){var t=window.themeToggle();b.textContent=t==='dark'?'☀️':'🌙';};}</script>
+
+<div class="container mt-4">
+
+    <!-- Quick Action Banner -->
+    <div class="alert alert-success" role="alert">
+        <h5>🎉 Customer QR Code System Active!</h5>
+        <p class="mb-2">Customers can now scan a QR code to place orders.</p>
+        <a href="qr-generator.html" class="btn btn-dark btn-sm">📱 Get Your QR Code</a>
+    </div>
+
+    <!-- Stats Overview -->
+    <h3>📊 System Overview</h3>
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center p-3 bg-primary text-white">
+                <h2 id="totalStores">0</h2>
+                <p class="mb-0">Total Stores</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3 bg-success text-white">
+                <h2 id="totalServices">0</h2>
+                <p class="mb-0">Total Services</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3 bg-warning text-white">
+                <h2 id="totalOrders">0</h2>
+                <p class="mb-0">Total Orders</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center p-3 bg-info text-white">
+                <h2 id="pendingOrders">0</h2>
+                <p class="mb-0">Pending Orders</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Dashboard -->
+    <h3 class="mt-4">📈 Analytics</h3>
+    <p class="text-muted">Revenue and orders across stores and time.</p>
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase small mb-1">Total Revenue</h6>
+                            <h3 class="mb-0" id="analyticsTotalRevenue">€0.00</h3>
+                            <small class="text-muted">All time</small>
+                        </div>
+                        <span class="fs-2">💰</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase small mb-1">This Month</h6>
+                            <h3 class="mb-0 text-success" id="analyticsThisMonth">€0.00</h3>
+                            <small class="text-muted" id="analyticsThisMonthOrders">0 orders</small>
+                        </div>
+                        <span class="fs-2">📅</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="text-muted text-uppercase small mb-1">Last Month</h6>
+                            <h3 class="mb-0" id="analyticsLastMonth">€0.00</h3>
+                            <small class="text-muted" id="analyticsLastMonthOrders">0 orders</small>
+                        </div>
+                        <span class="fs-2">📊</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">Revenue by Month</h5>
+                </div>
+                <div class="card-body">
+                    <div id="analyticsByMonthChart" class="mb-3" style="min-height:220px"></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead><tr><th>Month</th><th class="text-end">Revenue</th><th class="text-end">Orders</th></tr></thead>
+                            <tbody id="analyticsByMonthTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">Revenue by Store</h5>
+                </div>
+                <div class="card-body">
+                    <div id="analyticsByStoreChart" class="mb-3" style="min-height:220px"></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead><tr><th>Store</th><th class="text-end">Revenue</th><th class="text-end">Orders</th></tr></thead>
+                            <tbody id="analyticsByStoreTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <!-- Filter Tabs -->
+    <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-orders" type="button">
+                All Orders (<span id="countAll">0</span>)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-orders" type="button">
+                Pending (<span id="countPending">0</span>)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed-orders" type="button">
+                Completed (<span id="countCompleted">0</span>)
+            </button>
+        </li>
+    </ul>
+
+    <!-- Order Tables -->
+    <div class="tab-content" id="orderTabsContent">
+        <!-- All Orders -->
+        <div class="tab-pane fade show active" id="all-orders">
+            <h4>📦 All Customer Orders</h4>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Store</th>
+                            <th>Service</th>
+                            <th>Price</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allOrdersTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pending Orders -->
+        <div class="tab-pane fade" id="pending-orders">
+            <h4>⏳ Pending Orders</h4>
+            <div class="table-responsive">
+                <table class="table table-warning table-hover">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Store</th>
+                            <th>Service</th>
+                            <th>Price</th>
+                            <th>Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pendingOrdersTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Completed Orders -->
+        <div class="tab-pane fade" id="completed-orders">
+            <h4>✅ Completed Orders</h4>
+            <div class="table-responsive">
+                <table class="table table-success table-hover">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Store</th>
+                            <th>Service</th>
+                            <th>Price</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="completedOrdersTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="config.js"></script>
+<script src="script.js"></script>
+<script src="admin-script.js"></script>
+<script>
+checkAuth("admin")
+loadAdminDashboard()
+</script>
+
+</body>
+</html>

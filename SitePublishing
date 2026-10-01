@@ -1,0 +1,354 @@
+🖥️ Raspberry Pi 4 — Server Deployment Guide
+Service Marketplace App · Full Production Setup
+
+📋 Table of Contents
+
+What You Need
+Install the Operating System
+First Boot & Initial Configuration
+Install Required Software
+Upload Your Project
+Configure the Application
+Run the App as a Service
+Configure Nginx (Web Server)
+Configure Your Domain (plus.hr)
+Install SSL Certificate (HTTPS)
+Open Router Ports
+Update Your Frontend Code
+Dynamic IP Fix with DuckDNS
+Testing & Going Live
+Maintenance Commands
+
+
+1. What You Need
+Hardware
+ItemNotesRaspberry Pi 42GB RAM minimum, 4GB recommendedMicroSD Card32GB minimum, Class 10 or fasterPower SupplyOfficial Pi 4 USB-C 5V/3AEthernet CableWired connection is more stable than WiFiAnother PCTo set everything up from
+Software (on your PC)
+
+Raspberry Pi Imager — https://www.raspberrypi.com/software/
+WinSCP — to transfer files (Windows) — https://winscp.net
+PuTTY — to connect via SSH (Windows) — https://putty.org
+
+Accounts / Services
+
+Your domain from plus.hr
+A free DuckDNS account — https://duckdns.org (explained in Step 13)
+
+
+2. Install the Operating System
+Step 1 — Download and open Raspberry Pi Imager on your PC
+Step 2 — Flash the SD card
+
+Click "Choose OS"
+Select → Raspberry Pi OS Lite (64-bit) ← no desktop, server only, faster
+Click "Choose Storage" → select your SD card
+Click the gear icon ⚙️ (Advanced settings) and configure:
+
+✅ Enable SSH
+✅ Set username: pi
+✅ Set password: choose a strong password and write it down
+✅ Set your WiFi (optional if using ethernet)
+✅ Set locale/timezone to your region
+
+
+Click "Write" and wait for it to finish
+
+Step 3 — Insert SD card into Pi and power it on
+Wait 2 minutes for first boot to complete.
+
+3. First Boot & Initial Configuration
+Find your Pi's IP address
+Log into your router admin panel (usually http://192.168.1.1 or http://192.168.0.1) and look for a device named raspberrypi in the connected devices list. Note its IP — example: 192.168.1.105
+Connect via SSH from your PC
+Open PuTTY, enter:
+
+Host Name: 192.168.1.105 (your Pi's IP)
+Port: 22
+Click Open → accept the key → login with pi and your password
+
+Update the system
+bashsudo apt update && sudo apt upgrade -y
+This may take 5–10 minutes on first run.
+Set a static local IP for your Pi
+This prevents your Pi's local IP from changing:
+bashsudo nano /etc/dhcpcd.conf
+Scroll to the bottom and add:
+interface eth0
+static ip_address=192.168.1.105/24
+static routers=192.168.1.1
+static domain_name_servers=8.8.8.8
+
+⚠️ Replace 192.168.1.105 with your Pi's actual IP and 192.168.1.1 with your router's IP.
+
+Save: CTRL+X → Y → Enter
+Reboot:
+bashsudo reboot
+Reconnect via PuTTY after 1 minute.
+
+4. Install Required Software
+Run these commands one by one:
+bash# Install Python, Nginx, Certbot
+sudo apt install python3-pip python3-venv nginx certbot python3-certbot-nginx git -y
+
+# Verify Python version (should be 3.9+)
+python3 --version
+
+# Verify Nginx is running
+sudo systemctl status nginx
+You should see active (running) for Nginx.
+
+5. Upload Your Project
+Option A — Using WinSCP (easiest)
+
+Open WinSCP on your PC
+New session:
+
+Protocol: SFTP
+Host: 192.168.1.105
+Username: pi
+Password: your password
+
+
+Connect
+Navigate to /home/pi/ on the right panel
+Drag your entire service-app folder from your PC to the Pi
+
+Option B — Using command line (from your PC)
+bashscp -r "C:\Users\kosda\Desktop\service-app" pi@192.168.1.105:/home/pi/
+
+6. Configure the Application
+SSH back into the Pi and set up the environment:
+bash# Go to the project folder
+cd /home/pi/service-app
+
+# Create virtual environment
+python3 -m venv venv
+
+# Activate it
+source venv/bin/activate
+
+# Install all dependencies
+pip install fastapi uvicorn sqlalchemy python-jose argon2-cffi python-dotenv gunicorn pillow python-multipart
+Create the .env file on the Pi
+bashnano /home/pi/service-app/.env
+Paste your settings:
+envSMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=you@example.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM=you@example.com
+SMTP_USE_TLS=true
+APP_ENV=production
+Save: CTRL+X → Y → Enter
+Test that the app runs
+bashcd /home/pi/service-app
+source venv/bin/activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+You should see Application startup complete.
+Press CTRL+C to stop — we'll run it properly in the next step.
+
+7. Run the App as a Service
+This makes your app start automatically when the Pi boots and restart if it crashes.
+bashsudo nano /etc/systemd/system/serviceapp.service
+Paste this exactly:
+ini[Unit]
+Description=Service Marketplace App
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/service-app
+ExecStart=/home/pi/service-app/venv/bin/gunicorn main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000
+Restart=always
+RestartSec=5
+EnvironmentFile=/home/pi/service-app/.env
+
+[Install]
+WantedBy=multi-user.target
+Save: CTRL+X → Y → Enter
+Enable and start the service:
+bashsudo systemctl daemon-reload
+sudo systemctl enable serviceapp
+sudo systemctl start serviceapp
+
+# Check it's running
+sudo systemctl status serviceapp
+You should see active (running) in green.
+
+8. Configure Nginx (Web Server)
+Nginx sits in front of your app and handles incoming web traffic.
+bashsudo nano /etc/nginx/sites-available/serviceapp
+Paste this (we'll add your domain name here):
+nginxserver {
+    listen 80;
+    server_name yourdomain.com www.yourdomain.com;
+
+    # Max upload size
+    client_max_body_size 10M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+⚠️ Replace yourdomain.com with your actual domain from plus.hr
+
+Save: CTRL+X → Y → Enter
+Enable the site and restart Nginx:
+bash# Enable the site
+sudo ln -s /etc/nginx/sites-available/serviceapp /etc/nginx/sites-enabled/
+
+# Remove default site
+sudo rm /etc/nginx/sites-enabled/default
+
+# Test config is valid
+sudo nginx -t
+
+# Restart Nginx
+sudo systemctl restart nginx
+
+9. Configure Your Domain (plus.hr)
+Find your home public IP
+On your Pi run:
+bashcurl ifconfig.me
+This shows your public IP — example: 89.164.xxx.xxx
+
+⚠️ Important: Home internet IPs change occasionally. See Step 13 to fix this permanently.
+
+Log into plus.hr DNS settings
+
+Log into your plus.hr account
+Go to Domains → your domain → DNS Management or DNS Zone
+Add/edit these records:
+
+TypeNameValueTTLA@89.164.xxx.xxx (your public IP)3600Awww89.164.xxx.xxx (your public IP)3600
+
+Save and wait — DNS can take up to 24 hours to propagate globally (usually 30 minutes)
+
+Check propagation
+Visit https://dnschecker.org and enter your domain to see if it's pointing to your IP yet.
+
+10. Install SSL Certificate (HTTPS)
+Once your domain is pointing to your Pi (DNS is propagated), run:
+bashsudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+Follow the prompts:
+
+Enter your email when asked
+Agree to terms → A
+Choose whether to share email → your choice
+Select redirect HTTP to HTTPS → 2 ← recommended
+
+Certbot will automatically update your Nginx config. Verify it worked:
+bashsudo nginx -t
+sudo systemctl restart nginx
+Your site is now available at https://yourdomain.com 🎉
+Auto-renew SSL (certificates expire every 90 days)
+Certbot sets this up automatically. Verify it:
+bashsudo certbot renew --dry-run
+Should say Congratulations, all renewals succeeded.
+
+11. Open Router Ports
+Your router blocks incoming traffic by default. You need to forward ports to your Pi.
+
+Log into your router admin panel (usually http://192.168.1.1)
+Find Port Forwarding (sometimes under "Advanced" or "NAT")
+Add two rules:
+
+Rule NameExternal PortInternal IPInternal PortProtocolHTTP80192.168.1.10580TCPHTTPS443192.168.1.105443TCP
+
+⚠️ Replace 192.168.1.105 with your Pi's static local IP from Step 3
+
+Save and apply. Your Pi is now reachable from the internet.
+
+12. Update Your Frontend Code
+You need to update the API URL in all your JavaScript files before uploading.
+On your PC, open each of these files and change:
+javascriptconst API = "http://127.0.0.1:8000"
+to:
+javascriptconst API = "https://yourdomain.com"
+Files to update:
+
+script.js
+admin-script.js
+menu-script.js
+
+Then re-upload the updated files to the Pi using WinSCP into /home/pi/service-app/static/
+
+13. Dynamic IP Fix with DuckDNS
+Your home internet IP changes randomly. DuckDNS updates your domain automatically when it does.
+Option A — Use DuckDNS as your domain (free subdomain)
+
+Go to https://duckdns.org
+Sign in with Google
+Create a subdomain: mystore.duckdns.org
+Note your token shown on the page
+
+Option B — Point plus.hr domain to DuckDNS (best setup)
+Use DuckDNS to track your IP, then point your real domain to it using a CNAME record in plus.hr:
+TypeNameValueCNAME@mystore.duckdns.org
+Install DuckDNS auto-update on the Pi
+bashmkdir ~/duckdns
+nano ~/duckdns/duck.sh
+Paste:
+bashecho url="https://www.duckdns.org/update?domains=mystore&token=YOUR-TOKEN-HERE&ip=" | curl -k -o ~/duckdns/duck.log -K -
+
+⚠️ Replace mystore with your subdomain and YOUR-TOKEN-HERE with your DuckDNS token
+
+bashchmod 700 ~/duckdns/duck.sh
+
+# Run it every 5 minutes automatically
+crontab -e
+Add this line at the bottom:
+*/5 * * * * ~/duckdns/duck.sh >/dev/null 2>&1
+Save: CTRL+X → Y → Enter
+Test it works:
+bash~/duckdns/duck.sh
+cat ~/duckdns/duck.log
+Should print OK.
+
+14. Testing & Going Live
+Final checklist
+bash# 1. App service is running
+sudo systemctl status serviceapp
+
+# 2. Nginx is running
+sudo systemctl status nginx
+
+# 3. Test the API directly
+curl http://localhost:8000/stores
+
+# 4. Check logs if something is wrong
+sudo journalctl -u serviceapp -n 50 --no-pager
+Test from your PC
+
+Visit https://yourdomain.com/static/login.html
+Try registering a new user
+Check the verification email arrives
+Log in and test the full app
+
+
+15. Maintenance Commands
+View live app logs
+bashsudo journalctl -u serviceapp -f
+Restart the app (after code changes)
+bashsudo systemctl restart serviceapp
+Update your code
+bash# Upload new files via WinSCP, then:
+sudo systemctl restart serviceapp
+Reboot the Pi safely
+bashsudo reboot
+Check disk space
+bashdf -h
+Check memory usage
+bashfree -h
+Backup your database
+bashcp /home/pi/service-app/app.db /home/pi/app.db.backup
+
+🆘 Troubleshooting
+ProblemSolutionSite not loadingCheck port forwarding on router502 Bad GatewayApp crashed — run sudo systemctl restart serviceappSSL not workingDNS not propagated yet — wait and retry certbotEmail not sendingCheck .env file has correct SMTP settingsDatabase lockedStop the service, wait 5s, restart itApp won't startCheck logs: sudo journalctl -u serviceapp -n 50
+
+Document version 1.0 — Raspberry Pi 4 Production Deployment

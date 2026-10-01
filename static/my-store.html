@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Store — Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--app-bg,#f5f5f0);color:var(--app-text,#1a1a1a)}
+[data-theme="dark"] body{--app-bg:#0f172a;background:#0f172a;color:#f1f5f9}
+[data-theme="dark"] .card-section,[data-theme="dark"] .section{background:var(--app-surface,#1e293b);border-color:#334155}
+[data-theme="dark"] .section-label,[data-theme="dark"] .field label{color:#94a3b8}
+[data-theme="dark"] .field input,[data-theme="dark"] .field textarea{background:#1e293b;border-color:#334155;color:#f1f5f9}
+[data-theme="dark"] .orders-table th,[data-theme="dark"] .orders-table td{border-color:#334155}
+[data-theme="dark"] .empty-orders-msg{color:#94a3b8}
+.topbar{background:#1a1a1a;color:#fff;height:58px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:200}
+.topbar .brand{font-weight:800;font-size:1.1rem;letter-spacing:-.4px}
+.topbar .brand span{color:#ff6b35}
+.topbar .nav-links{display:flex;gap:8px}
+.btn-top{padding:7px 16px;border-radius:50px;font-size:.8rem;font-weight:700;
+  border:1.5px solid rgba(255,255,255,.25);background:transparent;color:#fff;cursor:pointer;transition:all .2s}
+.btn-top:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+.btn-top.primary{background:#ff6b35;border-color:#ff6b35}
+.btn-top.primary:hover{background:#e55a25}
+
+.page{max-width:1000px;margin:0 auto;padding:28px 16px}
+.card-section{background:#fff;border-radius:18px;border:1px solid #e8e8e2;
+  padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.section-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;
+  color:#999;margin-bottom:14px}
+.section-title{font-size:1.1rem;font-weight:800;margin-bottom:4px}
+
+/* ── CATEGORY PICKER ────────────────────── */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.cat-option{
+  border:2px solid #e8e8e2;border-radius:14px;padding:14px 10px;
+  text-align:center;cursor:pointer;transition:all .2s;background:#fff;
+}
+.cat-option:hover{border-color:#1a1a1a}
+.cat-option.selected{border-color:#ff6b35;background:#fff8f5}
+.cat-option .cat-icon{font-size:1.8rem;display:block;margin-bottom:6px}
+.cat-option .cat-label{font-size:.75rem;font-weight:700;color:#555}
+.cat-option.selected .cat-label{color:#ff6b35}
+
+/* ── MENU STYLE PICKER ──────────────────── */
+.style-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.style-option{
+  border:2px solid #e8e8e2;border-radius:14px;overflow:hidden;
+  cursor:pointer;transition:all .2s;
+}
+.style-option:hover{border-color:#1a1a1a;transform:translateY(-2px)}
+.style-option.selected{border-color:#ff6b35;box-shadow:0 4px 16px rgba(255,107,53,.2)}
+.style-preview{height:100px;display:flex;align-items:center;justify-content:center;
+  background:#f5f5f0;gap:4px;padding:8px;overflow:hidden}
+/* preview thumbnails */
+.prev-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:100%}
+.prev-grid .block{background:#ddd;border-radius:4px;height:36px}
+.prev-grid .block.img{background:linear-gradient(135deg,#667eea44,#764ba244)}
+.prev-list{display:flex;flex-direction:column;gap:4px;width:100%}
+.prev-list .row{display:flex;gap:4px;align-items:center}
+.prev-list .row .sq{width:28px;height:28px;border-radius:4px;background:linear-gradient(135deg,#667eea44,#764ba244);flex-shrink:0}
+.prev-list .row .lines{flex:1;display:flex;flex-direction:column;gap:3px}
+.prev-list .row .lines div{background:#ddd;border-radius:3px;height:7px}
+.prev-list .row .lines div:last-child{width:50%}
+.prev-minimal{display:flex;flex-direction:column;gap:6px;width:100%}
+.prev-minimal .mrow{display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid #e0e0e0;padding-bottom:6px}
+.prev-minimal .mrow .mtxt{display:flex;flex-direction:column;gap:3px}
+.prev-minimal .mrow .mtxt div{background:#ddd;border-radius:3px;height:7px;width:70px}
+.prev-minimal .mrow .mtxt div:last-child{width:40px}
+.prev-minimal .mrow .mprice{background:#e0f0e8;border-radius:4px;width:28px;height:16px}
+.prev-magazine{width:100%;display:flex;flex-direction:column;gap:3px}
+.prev-magazine .hero-row{display:flex;gap:3px;height:40px}
+.prev-magazine .hero-row .big{flex:1;background:linear-gradient(135deg,#667eea44,#764ba244);border-radius:4px}
+.prev-magazine .hero-row .info{flex:1;display:flex;flex-direction:column;justify-content:center;gap:3px}
+.prev-magazine .hero-row .info div{background:#ddd;border-radius:3px;height:7px}
+.prev-magazine .small-row{display:flex;gap:3px}
+.prev-magazine .small-row .sm{flex:1;background:#e8e8e8;border-radius:4px;height:28px}
+.prev-masonry{columns:3;gap:3px;width:100%}
+.prev-masonry .block{break-inside:avoid;background:linear-gradient(135deg,#667eea22,#764ba222);
+  border-radius:4px;margin-bottom:3px}
+.style-option-label{padding:8px 10px;background:#fff;font-size:.75rem;font-weight:700;
+  text-align:center;color:#555;border-top:1px solid #e8e8e2}
+.style-option.selected .style-option-label{color:#ff6b35}
+
+/* ── COLOR & THEME ──────────────────────── */
+.theme-picker{display:flex;gap:8px;flex-wrap:wrap}
+.theme-btn{
+  padding:9px 18px;border-radius:50px;font-size:.78rem;font-weight:700;
+  cursor:pointer;border:2px solid transparent;transition:all .18s;
+}
+.theme-btn.active{outline:3px solid #ff6b35;outline-offset:2px}
+.color-row{display:flex;gap:12px;flex-wrap:wrap}
+.color-field{flex:1;min-width:80px}
+.color-field label{font-size:.72rem;font-weight:700;color:#999;display:block;margin-bottom:5px;text-transform:uppercase}
+.color-field input[type=color]{width:100%;height:40px;border:2px solid #e8e8e2;border-radius:10px;cursor:pointer;padding:2px}
+
+/* ── IMAGE UPLOAD ───────────────────────── */
+.upload-zone{
+  border:2px dashed #d0d0ca;border-radius:12px;padding:16px;
+  text-align:center;cursor:pointer;transition:all .2s;
+  background:#fafaf8;position:relative;overflow:hidden;
+}
+.upload-zone:hover{border-color:#ff6b35;background:#fff8f5}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;z-index:2}
+.upload-zone .uz-icon{font-size:1.8rem;display:block;margin-bottom:4px}
+.upload-zone .uz-text{font-size:.75rem;color:#999;font-weight:600}
+.upload-zone .uz-sizes{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.size-tag{background:#f0f0ea;border-radius:4px;padding:2px 7px;font-size:.7rem;font-weight:700;color:#888}
+.upload-zone .preview-img{max-height:100px;border-radius:8px;max-width:100%;display:none}
+.upload-status{font-size:.75rem;margin-top:6px;font-weight:600}
+.upload-status.ok{color:#38a169}
+.upload-status.err{color:#e53e3e}
+
+/* ── SERVICES ───────────────────────────── */
+.service-item{
+  display:flex;align-items:center;gap:14px;
+  padding:14px;border-radius:14px;border:1px solid #e8e8e2;
+  background:#fff;transition:box-shadow .2s;
+}
+.service-item:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.service-item-img{width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;
+  background:linear-gradient(135deg,#667eea22,#764ba222);display:flex;align-items:center;justify-content:center;font-size:1.5rem}
+.service-item-info{flex:1}
+.service-item-name{font-weight:700;font-size:.9rem}
+.service-item-desc{font-size:.78rem;color:#888;margin-top:2px}
+.service-item-price{font-weight:800;font-size:.95rem;color:#38a169;margin-top:4px}
+.service-item-del{background:none;border:none;color:#ccc;cursor:pointer;font-size:1.1rem;
+  transition:color .2s;padding:4px}
+.service-item-del:hover{color:#e53e3e}
+
+/* ── ADD ITEM FORM ──────────────────────── */
+.add-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.add-form{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:.75rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field textarea{
+  padding:10px 13px;border:1.5px solid #e8e8e2;border-radius:10px;
+  font-family:inherit;font-size:.88rem;outline:none;transition:border-color .2s;
+}
+.field input:focus,.field textarea:focus{border-color:#ff6b35}
+
+/* ── ORDERS ──────────────────────────────── */
+.orders-table{width:100%;border-collapse:separate;border-spacing:0}
+.orders-table th{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;
+  color:#999;padding:10px 12px;border-bottom:2px solid #e8e8e2;background:#fafaf8;text-align:left}
+.orders-table td{padding:12px;border-bottom:1px solid #f0f0ea;font-size:.84rem;vertical-align:middle}
+.orders-table tr:last-child td{border-bottom:none}
+.badge-pending{background:#fff3cd;color:#856404;border-radius:50px;padding:3px 10px;font-size:.72rem;font-weight:700}
+.badge-complete{background:#d1e7dd;color:#0a3622;border-radius:50px;padding:3px 10px;font-size:.72rem;font-weight:700}
+.btn-complete{background:#1a1a1a;color:#fff;border:none;border-radius:50px;
+  padding:5px 14px;font-size:.75rem;font-weight:700;cursor:pointer;transition:background .2s}
+.btn-complete:hover{background:#ff6b35}
+
+.store-page-link{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:50px;font-size:.82rem;font-weight:700;
+  background:#f5f5f0;color:#1a1a1a;text-decoration:none;border:1.5px solid #e8e8e2;
+  transition:all .2s;
+}
+.store-page-link:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+a.btn-analytics-cta:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(102,126,234,.4)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Py<span>Up</span> <span style="font-weight:400;opacity:.5;font-size:.85rem;margin-left:6px">Store Manager</span></div>
+  <div class="nav-links">
+    <button id="themeBtn" type="button" title="Toggle dark mode" class="btn-top" style="padding:6px 12px;font-size:1.1rem">🌙</button>
+    <a id="backNavLink" href="customer.html" class="btn-top">← Back</a>
+    <button onclick="logout()" class="btn-top primary">Logout</button>
+  </div>
+</div>
+<script src="theme.js"></script>
+<script>window.themeInit();(function(){var b=document.getElementById('themeBtn');if(b){b.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙';b.onclick=function(){var t=window.themeToggle();b.textContent=t==='dark'?'☀️':'🌙';};}})();</script>
+
+<div class="page">
+
+  <!-- ── CREATE STORE ──────────────────── -->
+  <div id="createSection" class="card-section" style="display:none">
+    <div class="section-label">Getting Started</div>
+    <h2 class="section-title mb-1">Create Your Store</h2>
+    <p style="color:#888;font-size:.85rem;margin-bottom:20px">Set up your store to start accepting orders</p>
+
+    <div class="add-form mb-3">
+      <div class="field"><label>Store Name</label><input id="newStoreName" placeholder="e.g. Joe's Pizza"></div>
+      <div class="field"><label>Description</label><input id="newStoreDesc" placeholder="Brief description of your store"></div>
+    </div>
+
+    <div class="section-label mt-3">Store Category</div>
+    <div class="cat-grid" id="createCatGrid"></div>
+
+    <button onclick="createStore()" style="margin-top:20px;padding:12px 28px;border-radius:12px;
+      background:#1a1a1a;color:#fff;border:none;font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer">
+      Create Store →
+    </button>
+  </div>
+
+  <!-- ── STORE TABS (shown when user has multiple stores) ── -->
+  <div id="storeTabsSection" style="display:none;margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap" id="storeTabs"></div>
+  </div>
+
+  <!-- ── STORE MANAGEMENT ─────────────── -->
+  <div id="storeSection" style="display:none">
+
+    <!-- Header -->
+    <div class="card-section" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div>
+        <div class="section-label">Your Store</div>
+        <h2 class="section-title" id="storeTitle"></h2>
+        <p style="color:#888;font-size:.85rem;margin:4px 0 12px" id="storeDesc"></p>
+        <a id="storePageLink" href="#" target="_blank" class="store-page-link">🔗 View Store Page</a>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button onclick="generateTableQRs()" style="padding:10px 20px;border-radius:12px;
+          background:#f5f5f0;border:1.5px solid #e8e8e2;font-family:inherit;font-weight:700;
+          font-size:.85rem;cursor:pointer;white-space:nowrap">
+          📱 QR Codes
+        </button>
+        <button onclick="showCreateNewStore()" style="padding:10px 20px;border-radius:12px;
+          background:#f0f9ff;border:1.5px solid #bae0ff;color:#0070c0;font-family:inherit;font-weight:700;
+          font-size:.85rem;cursor:pointer;white-space:nowrap">
+          ➕ New Store
+        </button>
+        <button onclick="confirmDeleteStore()" style="padding:10px 20px;border-radius:12px;
+          background:#fff0f0;border:1.5px solid #fcc;color:#e53e3e;font-family:inherit;font-weight:700;
+          font-size:.85rem;cursor:pointer;white-space:nowrap">
+          🗑 Delete Store
+        </button>
+      </div>
+    </div>
+
+    <!-- ── CUSTOMIZE ─────────────────── -->
+    <div class="card-section">
+      <div class="section-label">🎨 Customize Store Page</div>
+
+      <!-- Basic info -->
+      <div class="add-form mb-4">
+        <div class="field"><label>Store Name</label><input id="custName" placeholder="Store Name"></div>
+        <div class="field"><label>Description</label><input id="custDesc" placeholder="Description"></div>
+        <div class="field"><label>Tagline</label><input id="custTagline" placeholder="Catchy tagline…"></div>
+        <div class="field"><label>Welcome Message</label><input id="custWelcome" placeholder="Shown on store page…"></div>
+        <div class="field"><label>Footer Text</label><input id="custFooter" placeholder="© 2025 My Store"></div>
+      </div>
+
+      <!-- Category -->
+      <div class="section-label">Store Category</div>
+      <div class="cat-grid mb-4" id="editCatGrid"></div>
+
+      <!-- Menu Style -->
+      <div class="section-label">Menu Layout Style</div>
+      <div class="style-grid mb-4" id="styleGrid">
+        <div class="style-option" data-style="grid" onclick="selectStyle('grid')">
+          <div class="style-preview">
+            <div class="prev-grid">
+              <div class="block img"></div><div class="block img"></div>
+              <div class="block"></div><div class="block"></div>
+            </div>
+          </div>
+          <div class="style-option-label">🔲 Grid</div>
+        </div>
+        <div class="style-option" data-style="list" onclick="selectStyle('list')">
+          <div class="style-preview">
+            <div class="prev-list">
+              <div class="row"><div class="sq"></div><div class="lines"><div></div><div></div></div></div>
+              <div class="row"><div class="sq"></div><div class="lines"><div></div><div></div></div></div>
+              <div class="row"><div class="sq"></div><div class="lines"><div></div><div></div></div></div>
+            </div>
+          </div>
+          <div class="style-option-label">📋 List</div>
+        </div>
+        <div class="style-option" data-style="minimal" onclick="selectStyle('minimal')">
+          <div class="style-preview">
+            <div class="prev-minimal">
+              <div class="mrow"><div class="mtxt"><div></div><div></div></div><div class="mprice"></div></div>
+              <div class="mrow"><div class="mtxt"><div></div><div></div></div><div class="mprice"></div></div>
+              <div class="mrow"><div class="mtxt"><div></div><div></div></div><div class="mprice"></div></div>
+            </div>
+          </div>
+          <div class="style-option-label">✨ Minimal</div>
+        </div>
+        <div class="style-option" data-style="magazine" onclick="selectStyle('magazine')">
+          <div class="style-preview">
+            <div class="prev-magazine">
+              <div class="hero-row"><div class="big"></div><div class="info"><div></div><div style="width:50%"></div></div></div>
+              <div class="small-row"><div class="sm"></div><div class="sm"></div><div class="sm"></div></div>
+            </div>
+          </div>
+          <div class="style-option-label">📰 Magazine</div>
+        </div>
+        <div class="style-option" data-style="masonry" onclick="selectStyle('masonry')">
+          <div class="style-preview">
+            <div class="prev-masonry">
+              <div class="block" style="height:52px"></div>
+              <div class="block" style="height:36px"></div>
+              <div class="block" style="height:44px"></div>
+              <div class="block" style="height:30px"></div>
+              <div class="block" style="height:46px"></div>
+              <div class="block" style="height:38px"></div>
+            </div>
+          </div>
+          <div class="style-option-label">🧱 Masonry</div>
+        </div>
+      </div>
+
+      <!-- Theme + Colors -->
+      <div class="section-label">Theme & Colors</div>
+      <input type="hidden" id="selectedThemeField" value="modern">
+      <div class="theme-picker mb-3" id="themePicker">
+        <button class="theme-btn" data-theme="modern" onclick="selectTheme('modern')"
+          style="background:linear-gradient(135deg,#667eea,#764ba2);color:white">🎨 Modern</button>
+        <button class="theme-btn" data-theme="dark" onclick="selectTheme('dark')"
+          style="background:linear-gradient(135deg,#1a1a2e,#0f3460);color:white">🌙 Dark</button>
+        <button class="theme-btn" data-theme="minimal" onclick="selectTheme('minimal')"
+          style="background:#fff;color:#333;border:2px solid #e0e0e0">✨ Minimal</button>
+        <button class="theme-btn" data-theme="warm" onclick="selectTheme('warm')"
+          style="background:linear-gradient(135deg,#f7971e,#ffd200);color:#333">🌅 Warm</button>
+      </div>
+      <div class="color-row mb-4">
+        <div class="color-field"><label>Primary</label><input type="color" id="cPrimary" value="#667eea" oninput="syncColors()"></div>
+        <div class="color-field"><label>Secondary</label><input type="color" id="cSecondary" value="#764ba2" oninput="syncColors()"></div>
+        <div class="color-field"><label>Accent</label><input type="color" id="cAccent" value="#28a745" oninput="syncColors()"></div>
+      </div>
+
+      <!-- Banner + Logo -->
+      <div class="add-form mb-3">
+        <div>
+          <div class="section-label">Banner Image</div>
+          <div class="upload-zone" onclick="document.getElementById('bannerInput').click()">
+            <span class="uz-icon">🖼</span>
+            <div class="uz-text">Click to upload banner</div>
+            <div class="uz-sizes"><span class="size-tag">1200×400</span><span class="size-tag">1920×480</span></div>
+            <img id="bannerPreview" class="preview-img" src="">
+            <input type="file" id="bannerInput" accept="image/*" onchange="uploadImg('banner',this)">
+          </div>
+          <div class="upload-status" id="bannerStatus"></div>
+        </div>
+        <div>
+          <div class="section-label">Store Logo</div>
+          <div class="upload-zone" onclick="document.getElementById('logoInput').click()">
+            <span class="uz-icon">🏷</span>
+            <div class="uz-text">Click to upload logo</div>
+            <div class="uz-sizes"><span class="size-tag">200×200</span><span class="size-tag">400×400</span></div>
+            <img id="logoPreview" class="preview-img" src="">
+            <input type="file" id="logoInput" accept="image/*" onchange="uploadImg('logo',this)">
+          </div>
+          <div class="upload-status" id="logoStatus"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button onclick="saveStore()" style="padding:12px 28px;border-radius:12px;
+          background:#1a1a1a;color:#fff;border:none;font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer">
+          💾 Save Changes
+        </button>
+        <a id="previewLink" href="#" target="_blank" style="padding:11px 22px;border-radius:12px;
+          border:1.5px solid #e8e8e2;font-weight:700;font-size:.85rem;text-decoration:none;color:#555">
+          👁 Preview
+        </a>
+        <span id="saveStatus" style="font-size:.8rem;color:#38a169;font-weight:600"></span>
+      </div>
+    </div>
+
+    <!-- ── ADD MENU ITEM ─────────────── -->
+    <div class="card-section">
+      <div class="section-label">➕ Add Menu Item</div>
+      <div class="add-form">
+        <div class="field"><label>Name</label><input id="svcName" placeholder="Item name"></div>
+        <div class="field"><label>Description</label><input id="svcDesc" placeholder="Short description"></div>
+        <div class="field"><label>Price (€)</label><input id="svcPrice" type="number" placeholder="0"></div>
+        <div>
+          <div class="section-label">Product Image (optional)</div>
+          <div class="upload-zone" onclick="document.getElementById('productInput').click()" style="padding:10px">
+            <span class="uz-icon" style="font-size:1.4rem">📷</span>
+            <div class="uz-text" id="prodPlaceholder">Upload product image</div>
+            <div class="uz-sizes"><span class="size-tag">400×400</span><span class="size-tag">800×600</span></div>
+            <img id="prodPreview" class="preview-img" src="" style="max-height:70px">
+            <input type="file" id="productInput" accept="image/*" onchange="uploadImg('product',this)">
+          </div>
+          <div class="upload-status" id="prodStatus"></div>
+        </div>
+      </div>
+      <button onclick="addItem()" style="margin-top:14px;padding:11px 24px;border-radius:10px;
+        background:#ff6b35;color:#fff;border:none;font-family:inherit;font-weight:700;cursor:pointer">
+        Add to Menu
+      </button>
+    </div>
+
+    <!-- ── MENU ITEMS ────────────────── -->
+    <div class="card-section">
+      <div class="section-label">🛍 Menu Items</div>
+      <div id="menuItems" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+
+    <!-- ── ORDERS ────────────────────── -->
+    <div class="card-section">
+      <div class="section-label">📦 Orders</div>
+      <div style="overflow-x:auto">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>Type</th><th>Location</th><th>Customer</th>
+              <th>Item</th><th>Qty</th><th>Total</th><th>Status</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /storeSection -->
+
+  <!-- ── CREATE NEW STORE (inline panel) ─ -->
+  <div id="createNewSection" class="card-section" style="display:none;border:2px solid #bae0ff;background:#f0f9ff">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <div class="section-label" style="color:#0070c0">Create New Store</div>
+        <h3 style="font-weight:800;font-size:1rem;margin:0">Add another store to your account</h3>
+      </div>
+      <button onclick="hideCreateNewStore()" style="background:none;border:none;cursor:pointer;font-size:1.4rem;color:#aaa">✕</button>
+    </div>
+    <div class="add-form mb-3">
+      <div class="field"><label>Store Name</label><input id="newStoreName2" placeholder="e.g. Joe's Pizza"></div>
+      <div class="field"><label>Description</label><input id="newStoreDesc2" placeholder="Brief description"></div>
+    </div>
+    <div class="section-label">Category</div>
+    <div class="cat-grid mb-3" id="newStoreCatGrid"></div>
+    <button onclick="createNewStore()" style="padding:11px 24px;border-radius:10px;
+      background:#1a1a1a;color:#fff;border:none;font-family:inherit;font-weight:700;cursor:pointer;font-size:.9rem">
+      Create Store →
+    </button>
+    <span id="createNewStatus" style="font-size:.8rem;margin-left:12px"></span>
+  </div>
+
+  <!-- ── Analytics Dashboard (bottom CTA, shown when user has stores) ── -->
+  <div id="analyticsCtaSection" class="card-section" style="display:none;border:2px dashed #e0d4f0;background:linear-gradient(135deg,#faf8fc 0%,#f5f0fa 100%)">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px">
+      <div>
+        <div class="section-label" style="color:#6b5b95">Analytics</div>
+        <h3 style="font-weight:800;font-size:1.05rem;margin:0;color:#1a1a1a">View your store performance</h3>
+        <p style="color:#666;font-size:.85rem;margin:4px 0 0">Revenue, orders, and trends in one dashboard.</p>
+      </div>
+      <a href="store-analytics.html" class="btn-analytics-cta" style="display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:12px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-weight:700;font-size:.9rem;text-decoration:none;box-shadow:0 4px 14px rgba(102,126,234,.35);transition:transform .2s,box-shadow .2s">
+        📊 Open Analytics Dashboard
+      </a>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script src="config.js"></script>
+<script src="script.js"></script>
+<script>
+const CATEGORIES = [
+  {id:"food",       icon:"🍕", label:"Food & Drinks"},
+  {id:"fashion",    icon:"👗", label:"Fashion"},
+  {id:"services",   icon:"💼", label:"Services"},
+  {id:"beauty",     icon:"💄", label:"Beauty"},
+  {id:"electronics",icon:"📱", label:"Electronics"},
+  {id:"home",       icon:"🏠", label:"Home & Living"},
+  {id:"health",     icon:"💪", label:"Health & Fitness"},
+  {id:"groceries",  icon:"🛒", label:"Groceries"},
+  {id:"entertainment",icon:"🎮",label:"Entertainment"},
+  {id:"pets",       icon:"🐾", label:"Pets"},
+];
+
+let selectedCategory = "services";
+let selectedStyle    = "grid";
+let selectedTheme    = "modern";
+let uploadedUrls     = {banner:null, logo:null, product:null};
+
+// Build category grids
+function buildCatGrid(containerId, onSelect) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = CATEGORIES.map(c => `
+    <div class="cat-option${selectedCategory===c.id?' selected':''}" data-cat="${c.id}"
+         onclick="${onSelect}('${c.id}','${containerId}')">
+      <span class="cat-icon">${c.icon}</span>
+      <span class="cat-label">${c.label}</span>
+    </div>`).join("");
+}
+
+function pickCategory(id, gridId) {
+  selectedCategory = id;
+  document.querySelectorAll(`#${gridId} .cat-option`).forEach(el =>
+    el.classList.toggle("selected", el.dataset.cat === id));
+}
+
+function selectStyle(s) {
+  selectedStyle = s;
+  document.querySelectorAll(".style-option").forEach(el =>
+    el.classList.toggle("selected", el.dataset.style === s));
+}
+
+function selectTheme(t) {
+  selectedTheme = t;
+  // Store in a hidden field so it's never lost
+  document.getElementById("selectedThemeField").value = t;
+  document.querySelectorAll(".theme-btn").forEach(el =>
+    el.classList.toggle("active", el.dataset.theme === t));
+}
+
+function syncColors() {
+  // live preview of colors could go here
+}
+
+// ── Save store (style, theme, colors, basic info) ─────────────────────────
+async function saveStore() {
+  if (!currentStoreId) return;
+  const statusEl = document.getElementById("saveStatus");
+  statusEl.textContent = "";
+  const payload = {
+    name:                 document.getElementById("custName").value.trim(),
+    description:          document.getElementById("custDesc").value.trim(),
+    tagline:              document.getElementById("custTagline").value.trim() || null,
+    welcome_message:      document.getElementById("custWelcome").value.trim() || null,
+    footer_text:          document.getElementById("custFooter").value.trim() || null,
+    category:             selectedCategory,
+    menu_style:           selectedStyle,
+    theme:                selectedTheme,
+    primary_color:        document.getElementById("cPrimary").value,
+    secondary_color:      document.getElementById("cSecondary").value,
+    accent_color:         document.getElementById("cAccent").value,
+    banner_image_url:     uploadedUrls.banner || null,
+    logo_url:             uploadedUrls.logo || null,
+  };
+  try {
+    statusEl.style.color = "#888";
+    statusEl.textContent = "Saving…";
+    const res = await fetch(`${API}/stores/${currentStoreId}/theme`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + getToken() },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) {
+      statusEl.style.color = "#38a169";
+      statusEl.textContent = "✓ Saved";
+      // Update in-memory store so tabs/display stay in sync
+      const idx = allMyStores.findIndex(s => s.id === currentStoreId);
+      if (idx >= 0) {
+        allMyStores[idx] = { ...allMyStores[idx], ...payload };
+        document.getElementById("storeTitle").textContent = payload.name;
+        document.getElementById("storeDesc").textContent = payload.description;
+      }
+      setTimeout(() => { statusEl.textContent = ""; }, 2000);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      statusEl.style.color = "#e53e3e";
+      statusEl.textContent = "✗ " + (d.detail || "Save failed");
+    }
+  } catch (err) {
+    statusEl.style.color = "#e53e3e";
+    statusEl.textContent = "✗ " + (err.message || "Save failed");
+  }
+}
+
+// Fix back button based on role
+(function() {
+  const role = localStorage.getItem("role");
+  const link = document.getElementById("backNavLink");
+  if (link) {
+    if (role === "admin") {
+      link.href = "admin.html";
+      link.textContent = "← Admin Panel";
+    } else {
+      link.href = "customer.html";
+      link.textContent = "← Browse Stores";
+    }
+  }
+})();
+
+// ── Image upload ─────────────────────────
+async function uploadImg(type, input) {
+  const file = input.files[0]; if (!file) return;
+  const statusId = type==="banner"?"bannerStatus":type==="logo"?"logoStatus":"prodStatus";
+  const statusEl = document.getElementById(statusId);
+  statusEl.className="upload-status"; statusEl.textContent="⏳ Uploading…";
+
+  const fd = new FormData(); fd.append("file", file);
+  const res = await fetch(`${API}/upload-image`, {
+    method:"POST", headers:{"Authorization":"Bearer "+getToken()}, body:fd
+  });
+
+  if (!res.ok) {
+    const e = await res.json();
+    statusEl.className="upload-status err";
+    statusEl.textContent="❌ "+(e.detail||"Upload failed");
+    return;
+  }
+  const d = await res.json();
+  uploadedUrls[type] = d.url;
+  statusEl.className="upload-status ok";
+  statusEl.textContent=`✅ ${d.width}×${d.height}`;
+
+  if (type==="banner"){
+    const p=document.getElementById("bannerPreview");p.src=d.url;p.style.display="block";}
+  else if (type==="logo"){
+    const p=document.getElementById("logoPreview");p.src=d.url;p.style.display="block";}
+  else if (type==="product"){
+    const p=document.getElementById("prodPreview");p.src=d.url;p.style.display="block";
+    document.getElementById("prodPlaceholder").style.display="none";}
+}
+
+// ── Load my store ─────────────────────────
+let allMyStores = [];
+
+async function loadMyStore() {
+  const res = await fetch(`${API}/my-stores`, {
+    headers:{"Authorization":"Bearer "+getToken()}
+  });
+  allMyStores = await res.json();
+  buildCatGrid("createCatGrid", "pickCategory");
+  if (!allMyStores.length) {
+    document.getElementById("createSection").style.display="block";
+    document.getElementById("analyticsCtaSection").style.display="none";
+  } else {
+    document.getElementById("analyticsCtaSection").style.display="block";
+    renderStoreTabs();
+    loadStoreById(allMyStores[0].id);
+  }
+}
+
+function renderStoreTabs() {
+  if (allMyStores.length <= 1) {
+    document.getElementById("storeTabsSection").style.display="none";
+    return;
+  }
+  document.getElementById("storeTabsSection").style.display="block";
+  const tabs = document.getElementById("storeTabs");
+  tabs.innerHTML = allMyStores.map(s => `
+    <button onclick="switchStore('${s.id}')" id="tab-${s.id}"
+      style="padding:8px 18px;border-radius:50px;font-family:inherit;font-size:.82rem;font-weight:700;
+             cursor:pointer;transition:all .18s;border:1.5px solid #e8e8e2;background:#fff;color:#555">
+      \u{1F3EA} ${s.name}
+    </button>`).join("") + `
+    <button onclick="showCreateNewStore()"
+      style="padding:8px 18px;border-radius:50px;font-family:inherit;font-size:.82rem;font-weight:700;
+             cursor:pointer;transition:all .18s;border:1.5px dashed #bae0ff;background:#f0f9ff;color:#0070c0">
+      \u2795 New
+    </button>`;
+}
+
+function switchStore(id) {
+  document.getElementById("createNewSection").style.display="none";
+  loadStoreById(id);
+}
+
+function loadStoreById(id) {
+  const s = allMyStores.find(x => x.id === id);
+  if (!s) return;
+  currentStoreId = s.id;
+  localStorage.setItem("currentStoreId", currentStoreId);
+  allMyStores.forEach(x => {
+    const t = document.getElementById(`tab-${x.id}`);
+    if (t) {
+      t.style.background  = x.id === id ? "#1a1a1a" : "#fff";
+      t.style.color       = x.id === id ? "#fff"    : "#555";
+      t.style.borderColor = x.id === id ? "#1a1a1a" : "#e8e8e2";
+    }
+  });
+  document.getElementById("storeSection").style.display="block";
+  document.getElementById("storeTitle").textContent = s.name;
+  document.getElementById("storeDesc").textContent  = s.description;
+  const link = `store-view.html?store=${currentStoreId}`;
+  document.getElementById("storePageLink").href = link;
+  document.getElementById("previewLink").href   = link;
+  document.getElementById("custName").value    = s.name || "";
+  document.getElementById("custDesc").value    = s.description || "";
+  document.getElementById("custTagline").value = s.tagline || "";
+  document.getElementById("custWelcome").value = s.welcome_message || "";
+  document.getElementById("custFooter").value  = s.footer_text || "";
+  document.getElementById("cPrimary").value    = s.primary_color   || "#667eea";
+  document.getElementById("cSecondary").value  = s.secondary_color || "#764ba2";
+  document.getElementById("cAccent").value     = s.accent_color    || "#28a745";
+  selectedCategory = s.category  || "services";
+  selectedStyle    = s.menu_style || "grid";
+  selectedTheme    = s.theme      || "modern";
+  document.getElementById("selectedThemeField").value = selectedTheme;
+  buildCatGrid("editCatGrid", "pickCategory");
+  document.querySelectorAll(".style-option").forEach(el =>
+    el.classList.toggle("selected", el.dataset.style === selectedStyle));
+  document.querySelectorAll(".theme-btn").forEach(el =>
+    el.classList.toggle("active", el.dataset.theme === selectedTheme));
+  uploadedUrls.banner = s.banner_image_url || null;
+  uploadedUrls.logo   = s.logo_url || null;
+  const bp = document.getElementById("bannerPreview");
+  const lp = document.getElementById("logoPreview");
+  if (s.banner_image_url){ bp.src=s.banner_image_url; bp.style.display="block"; }
+  else { bp.src=""; bp.style.display="none"; }
+  if (s.logo_url){ lp.src=s.logo_url; lp.style.display="block"; }
+  else { lp.src=""; lp.style.display="none"; }
+  loadMyServices();
+  loadStoreOrders();
+}
+
+// ── Create first store ────────────────────
+async function createStore() {
+  const name = document.getElementById("newStoreName").value.trim();
+  const desc = document.getElementById("newStoreDesc").value.trim();
+  if (!name) return alert("Please enter a store name");
+  const res = await fetch(`${API}/stores`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+getToken()},
+    body: JSON.stringify({name, description:desc, category:selectedCategory})
+  });
+  if (res.ok) location.reload();
+  else alert("Failed to create store");
+}
+
+// ── Create additional store ───────────────
+let newStoreCategory = "services";
+
+function showCreateNewStore() {
+  const el = document.getElementById("createNewSection");
+  el.style.display = "block";
+  el.scrollIntoView({behavior:"smooth", block:"nearest"});
+  buildCatGrid("newStoreCatGrid", "pickNewStoreCategory");
+}
+function hideCreateNewStore() {
+  document.getElementById("createNewSection").style.display="none";
+}
+function pickNewStoreCategory(id) {
+  newStoreCategory = id;
+  document.querySelectorAll("#newStoreCatGrid .cat-option").forEach(el =>
+    el.classList.toggle("selected", el.dataset.cat === id));
+}
+async function createNewStore() {
+  const name = document.getElementById("newStoreName2").value.trim();
+  const desc = document.getElementById("newStoreDesc2").value.trim();
+  const status = document.getElementById("createNewStatus");
+  if (!name) { status.style.color="#e53e3e"; status.textContent="\u274C Please enter a name"; return; }
+  status.style.color="#888"; status.textContent="Creating...";
+  const res = await fetch(`${API}/stores`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+getToken()},
+    body: JSON.stringify({name, description:desc, category:newStoreCategory})
+  });
+  if (res.ok) {
+    status.style.color="#38a169"; status.textContent="\u2705 Created!";
+    setTimeout(() => location.reload(), 700);
+  } else {
+    status.style.color="#e53e3e"; status.textContent="\u274C Failed to create store";
+  }
+}
+
+// ── Delete store ──────────────────────────
+async function confirmDeleteStore() {
+  const storeName = document.getElementById("storeTitle").textContent;
+  if (!confirm("Delete \"" + storeName + "\"?\n\nThis permanently deletes the store, ALL menu items, and ALL orders. Cannot be undone.")) return;
+  const typed = prompt("Type the store name to confirm:\n\"" + storeName + "\"");
+  if (typed === null) return;
+  if (typed.trim() !== storeName.trim()) { alert("Name did not match. Cancelled."); return; }
+  const res = await fetch(`${API}/stores/${currentStoreId}`, {
+    method:"DELETE",
+    headers:{"Authorization":"Bearer "+getToken()}
+  });
+  if (res.ok) { alert("Store deleted."); location.reload(); }
+  else {
+    const d = await res.json().catch(()=>({detail:"Unknown error"}));
+    alert("Failed: " + d.detail);
+  }
+}
+
+// ── Load services ─────────────────────────
+async function loadMyServices() {
+  const res = await fetch(`${API}/stores/${currentStoreId}/services`);
+  const data = await res.json();
+  const el = document.getElementById("menuItems");
+
+  if (!data.length) {
+    el.innerHTML=`<div class="empty-orders-msg" style="text-align:center;padding:24px;background:var(--app-bg,#fafafa);border-radius:12px;border:1px dashed var(--app-border,#e8e8e2)">
+      <div style="font-size:2rem;margin-bottom:8px">🛍</div>
+      <div style="font-weight:700;margin-bottom:4px">No menu items yet</div>
+      <p style="margin:0;font-size:.9rem">Add your first item using the form above.</p>
+    </div>`;return;}
+
+  el.innerHTML = data.map(s => `
+    <div class="service-item">
+      ${s.image_url
+        ? `<img src="${s.image_url}" class="service-item-img" style="object-fit:cover">`
+        : `<div class="service-item-img">🛍</div>`}
+      <div class="service-item-info">
+        <div class="service-item-name">${s.name}</div>
+        <div class="service-item-desc">${s.description||""}</div>
+        <div class="service-item-price">€${s.price}</div>
+      </div>
+      <button class="service-item-del" onclick="deleteItem('${s.id}')" title="Delete">🗑</button>
+    </div>`).join("");
+}
+
+async function addItem() {
+  const name  = document.getElementById("svcName").value.trim();
+  const desc  = document.getElementById("svcDesc").value.trim();
+  const price = parseInt(document.getElementById("svcPrice").value);
+  if (!name || !price) return alert("Please enter name and price");
+
+  await fetch(`${API}/stores/${currentStoreId}/services`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+getToken()},
+    body: JSON.stringify({name, description:desc, price, image_url:uploadedUrls.product||null})
+  });
+  document.getElementById("svcName").value="";
+  document.getElementById("svcDesc").value="";
+  document.getElementById("svcPrice").value="";
+  uploadedUrls.product=null;
+  const p=document.getElementById("prodPreview");p.style.display="none";p.src="";
+  document.getElementById("prodPlaceholder").style.display="block";
+  document.getElementById("prodStatus").textContent="";
+  loadMyServices();
+}
+
+async function deleteItem(id) {
+  if (!confirm("Delete this item?")) return;
+  await fetch(`${API}/stores/${currentStoreId}/services/${id}`, {
+    method:"DELETE", headers:{"Authorization":"Bearer "+getToken()}
+  });
+  loadMyServices();
+}
+
+// ── Load orders ───────────────────────────
+async function loadStoreOrders() {
+  const res = await fetch(`${API}/store-orders/${currentStoreId}`, {
+    headers:{"Authorization":"Bearer "+getToken()}
+  });
+  const data = await res.json();
+  const tbody = document.getElementById("ordersBody");
+
+  if (!data.length) {
+    tbody.innerHTML=`<tr><td colspan="9" class="empty-orders-msg" style="text-align:center;padding:32px 24px">
+      <div style="font-size:2rem;margin-bottom:8px">📦</div>
+      <div style="font-weight:700;margin-bottom:4px">No orders yet</div>
+      <div style="font-size:.9rem;margin-bottom:16px">Share your store link with customers to start receiving orders.</div>
+      <a href="store-view.html?store=${currentStoreId}" style="display:inline-block;padding:10px 20px;background:#1a1a1a;color:#fff;border-radius:50px;font-size:.85rem;font-weight:700;text-decoration:none">Open store page</a>
+    </td></tr>`;return;}
+
+  tbody.innerHTML = data.map(o => {
+    const icon = o.order_type==="dine-in"?"🍽":"🚗";
+    const loc  = o.order_type==="dine-in" ? `Table ${o.table_number}`
+      : (o.delivery_address?o.delivery_address.substring(0,25)+"…":"N/A");
+    return `<tr>
+      <td style="color:#aaa">${o.id.substring(0,7)}…</td>
+      <td>${icon} ${o.order_type}</td>
+      <td>${loc}</td>
+      <td>${o.customer_name||"Guest"}</td>
+      <td>${o.service_name}</td>
+      <td>${o.quantity}</td>
+      <td><strong>€${o.price*o.quantity}</strong></td>
+      <td><span class="${o.status==="Completed"?"badge-complete":"badge-pending"}">${o.status}</span></td>
+      <td>${o.status!=="Completed"
+        ?`<button class="btn-complete" onclick="completeOrder('${o.id}')">Complete</button>`
+        :"✓"}</td>
+    </tr>`;
+  }).join("");
+}
+
+async function completeOrder(id) {
+  await fetch(`${API}/orders/${id}`, {
+    method:"PUT",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+getToken()},
+    body: JSON.stringify({status:"Completed"})
+  });
+  loadStoreOrders();
+}
+
+function generateTableQRs() { window.location.href="table-qr.html"; }
+
+// ── Init ──────────────────────────────────
+checkAuth("user");
+loadMyStore();
+</script>
+</body>
+</html>

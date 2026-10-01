@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analytics Dashboard — My Store</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="theme.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, sans-serif; background: var(--app-bg); color: var(--app-text); margin: 0; min-height: 100vh; font-size: 15px; }
+    .topbar {
+      background: #0f172a;
+      color: #fff;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+    .topbar .brand { font-weight: 700; font-size: 1.05rem; }
+    .topbar .brand span { color: #f97316; }
+    .topbar a { color: rgba(255,255,255,.9); text-decoration: none; font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 8px; }
+    .topbar a:hover { background: rgba(255,255,255,.1); }
+    .topbar button { background: rgba(255,255,255,.12); border: none; color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; }
+    .topbar button:hover { background: rgba(255,255,255,.2); }
+    .main { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+    h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 4px; }
+    .subtitle { color: var(--app-muted); font-size: 14px; margin: 0 0 20px; }
+    .admin-link { display: inline-block; margin-bottom: 20px; padding: 8px 14px; background: #fef3c7; color: #92400e; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; }
+    .admin-link:hover { background: #fde68a; }
+    .msg { padding: 12px 16px; background: #fef2f2; color: #991b1b; font-size: 14px; border-radius: 8px; margin-bottom: 20px; display: none; }
+    .msg.show { display: block; }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      border-radius: 10px;
+    }
+    .filters label { font-size: 13px; font-weight: 600; color: var(--app-muted); }
+    .filters select {
+      padding: 8px 12px;
+      border: 1px solid var(--app-border);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--app-surface);
+      color: var(--app-text);
+      min-width: 140px;
+    }
+    .filters select:focus { outline: none; border-color: #3b82f6; }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    @media (max-width: 800px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .kpis { grid-template-columns: 1fr; } }
+    .kpi {
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .kpi .name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--app-muted); margin-bottom: 6px; }
+    .kpi .amount { font-size: 1.5rem; font-weight: 700; color: var(--app-text); font-variant-numeric: tabular-nums; }
+    .kpi .extra { font-size: 13px; color: var(--app-muted); margin-top: 4px; }
+
+    .skeleton { background: linear-gradient(90deg, var(--app-border) 25%, var(--app-surface) 50%, var(--app-border) 75%); background-size: 200% 100%; animation: skeleton 1s ease-in-out infinite; border-radius: 8px; }
+    @keyframes skeleton { to { background-position: -200% 0; } }
+    .loading-skeleton .kpi .amount { height: 32px; width: 80px; }
+    .loading-skeleton .chart-wrap { display: flex; align-items: center; justify-content: center; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--app-border); border-top-color: #3b82f6; border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+    @media (max-width: 900px) { .charts { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: var(--app-surface);
+      border: 1px solid var(--app-border);
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 320px;
+    }
+    .chart-card h3 { font-size: 14px; font-weight: 600; color: var(--app-text); margin: 0 0 16px; }
+    .chart-wrap { position: relative; height: 280px; }
+    .chart-wrap canvas { max-height: 280px; }
+
+    .section { background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 12px; margin-bottom: 24px; overflow: hidden; }
+    .section-title { font-size: 13px; font-weight: 600; color: var(--app-text); padding: 14px 20px; border-bottom: 1px solid var(--app-border); background: var(--app-bg); }
+    .section table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .section th { text-align: left; padding: 12px 20px; font-weight: 600; color: var(--app-muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--app-border); }
+    .section td { padding: 12px 20px; border-bottom: 1px solid var(--app-border); }
+    .section tr:last-child td { border-bottom: 0; }
+    .section .r { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <nav class="topbar">
+    <span class="brand">Py<span>Up</span> · Dashboard</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="themeBtn" onclick="document.documentElement.setAttribute('data-theme', window.themeToggle());" type="button" title="Toggle dark mode" style="padding:6px 10px;font-size:1.1rem;line-height:1">🌙</button>
+      <a href="my-store.html">← My Store</a>
+      <a href="customer.html">Browse</a>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </nav>
+  <script src="theme.js"></script>
+  <script>window.themeInit(); document.getElementById('themeBtn').textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; document.getElementById('themeBtn').onclick = function(){ var t = window.themeToggle(); this.textContent = t === 'dark' ? '☀️' : '🌙'; };</script>
+
+  <div class="main">
+    <h1>Analytics Dashboard</h1>
+    <p class="subtitle">Revenue and orders. Use filters to narrow by time or store.</p>
+    <a id="adminLink" href="admin.html" class="admin-link" style="display:none">Admin: view all stores →</a>
+
+    <div id="msg" class="msg"></div>
+
+    <div id="loadingDash" style="display:none;text-align:center;padding:32px 0;color:var(--app-muted)">
+      <div class="spinner" style="margin:0 auto 12px"></div>
+      <div>Loading analytics…</div>
+    </div>
+
+    <div id="emptyState" style="display:none;text-align:center;padding:48px 24px;background:var(--app-surface);border:1px solid var(--app-border);border-radius:12px;margin-bottom:24px">
+      <div style="font-size:3rem;margin-bottom:12px;opacity:.8">📊</div>
+      <h3 style="font-size:1.1rem;margin:0 0 8px;color:var(--app-text)">No data yet</h3>
+      <p style="color:var(--app-muted);margin:0 0 20px;font-size:14px">Revenue and orders will appear here once you have stores and customers place orders.</p>
+      <a href="my-store.html" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;border-radius:8px;font-weight:600;text-decoration:none;font-size:14px">Go to My Store</a>
+    </div>
+
+    <div id="dashboardWrap">
+    <div class="filters">
+      <label>Time range</label>
+      <select id="filterTime">
+        <option value="6">Last 6 months</option>
+        <option value="12" selected>Last 12 months</option>
+        <option value="all">All time</option>
+      </select>
+      <label>Store</label>
+      <select id="filterStore">
+        <option value="">All stores</option>
+      </select>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="name">Total revenue</div>
+        <div class="amount" id="kpiTotal">€0.00</div>
+        <div class="extra" id="kpiTotalNote">Filtered</div>
+      </div>
+      <div class="kpi">
+        <div class="name">Orders</div>
+        <div class="amount" id="kpiOrders">0</div>
+        <div class="extra">In range</div>
+      </div>
+      <div class="kpi">
+        <div class="name">This month</div>
+        <div class="amount" id="kpiThisMonth">€0.00</div>
+        <div class="extra" id="kpiThisMonthOrders">0 orders</div>
+      </div>
+      <div class="kpi">
+        <div class="name">Last month</div>
+        <div class="amount" id="kpiLastMonth">€0.00</div>
+        <div class="extra" id="kpiLastMonthOrders">0 orders</div>
+      </div>
+    </div>
+
+    <div class="charts">
+      <div class="chart-card">
+        <h3>Revenue by month</h3>
+        <div class="chart-wrap"><canvas id="chartMonth"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Revenue by store</h3>
+        <div class="chart-wrap"><canvas id="chartStore"></canvas></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Revenue by month</div>
+      <table>
+        <thead><tr><th>Month</th><th class="r">Revenue</th><th class="r">Orders</th></tr></thead>
+        <tbody id="tableMonth"></tbody>
+      </table>
+    </div>
+    <div class="section">
+      <div class="section-title">Revenue by store</div>
+      <table>
+        <thead><tr><th>Store</th><th class="r">Revenue</th><th class="r">Orders</th></tr></thead>
+        <tbody id="tableStore"></tbody>
+      </table>
+    </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+  <script>
+(function() {
+  function token() { return localStorage.getItem('token'); }
+  if (!token()) { window.location.href = 'login.html'; return; }
+
+  if (localStorage.getItem('role') === 'admin') {
+    var el = document.getElementById('adminLink');
+    if (el) el.style.display = 'inline-block';
+  }
+
+  var raw = { by_month: [], by_store: [], total_revenue: 0, revenue_this_month: 0, revenue_last_month: 0, orders_this_month: 0, orders_last_month: 0, total_orders: 0 };
+  var chartMonth = null;
+  var chartStore = null;
+
+  function showErr(txt) {
+    var m = document.getElementById('msg');
+    if (m) { m.textContent = txt; m.classList.add('show'); }
+  }
+  function hideErr() {
+    var m = document.getElementById('msg');
+    if (m) m.classList.remove('show');
+  }
+
+  function getFiltered() {
+    var timeVal = document.getElementById('filterTime').value;
+    var storeVal = document.getElementById('filterStore').value;
+    var months = raw.by_month || [];
+    var stores = raw.by_store || [];
+    if (timeVal !== 'all') {
+      var n = parseInt(timeVal, 10);
+      months = months.slice(0, n);
+    }
+    if (storeVal) {
+      stores = stores.filter(function(s) { return s.store_id === storeVal; });
+    }
+    var sumRev = 0, sumOrd = 0;
+    months.forEach(function(m) { sumRev += m.revenue; sumOrd += m.order_count || 0; });
+    if (storeVal && stores.length) {
+      sumRev = stores[0].revenue;
+      sumOrd = stores[0].order_count || 0;
+    } else if (!storeVal && stores.length) {
+      sumRev = 0; sumOrd = 0;
+      months.forEach(function(m) { sumRev += m.revenue; sumOrd += m.order_count || 0; });
+    }
+    return { months: months, stores: stores, filteredRevenue: sumRev, filteredOrders: sumOrd };
+  }
+
+  function applyFilters() {
+    var f = getFiltered();
+    var months = f.months;
+    var stores = f.stores;
+
+    document.getElementById('kpiTotal').textContent = '€' + Number(f.filteredRevenue).toFixed(2);
+    document.getElementById('kpiOrders').textContent = f.filteredOrders;
+    document.getElementById('kpiTotalNote').textContent = document.getElementById('filterTime').value === 'all' && !document.getElementById('filterStore').value ? 'All time' : 'Filtered';
+    document.getElementById('kpiThisMonth').textContent = '€' + Number(raw.revenue_this_month || 0).toFixed(2);
+    document.getElementById('kpiThisMonthOrders').textContent = (raw.orders_this_month || 0) + ' orders';
+    document.getElementById('kpiLastMonth').textContent = '€' + Number(raw.revenue_last_month || 0).toFixed(2);
+    document.getElementById('kpiLastMonthOrders').textContent = (raw.orders_last_month || 0) + ' orders';
+
+    if (chartMonth) chartMonth.destroy();
+    if (chartStore) chartStore.destroy();
+
+    var ctxM = document.getElementById('chartMonth');
+    if (months.length === 0) {
+      ctxM.height = 0;
+    } else {
+      chartMonth = new Chart(ctxM, {
+        type: 'bar',
+        data: {
+          labels: months.map(function(m) { return m.month; }),
+          datasets: [{
+            label: 'Revenue (€)',
+            data: months.map(function(m) { return m.revenue; }),
+            backgroundColor: 'rgba(99, 102, 241, 0.7)',
+            borderColor: 'rgb(99, 102, 241)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: function(v) { return '€' + v; } } }
+          }
+        }
+      });
+    }
+
+    var ctxS = document.getElementById('chartStore');
+    if (stores.length === 0) {
+      ctxS.height = 0;
+    } else {
+      chartStore = new Chart(ctxS, {
+        type: 'bar',
+        data: {
+          labels: stores.map(function(s) { return (s.store_name || 'Store').length > 20 ? (s.store_name || 'Store').slice(0, 18) + '…' : (s.store_name || 'Store'); }),
+          datasets: [{
+            label: 'Revenue (€)',
+            data: stores.map(function(s) { return s.revenue; }),
+            backgroundColor: 'rgba(16, 185, 129, 0.7)',
+            borderColor: 'rgb(16, 185, 129)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, ticks: { callback: function(v) { return '€' + v; } } }
+          }
+        }
+      });
+    }
+
+    document.getElementById('tableMonth').innerHTML = months.length
+      ? months.map(function(m) { return '<tr><td>' + m.month + '</td><td class="r">€' + Number(m.revenue).toFixed(2) + '</td><td class="r">' + (m.order_count || 0) + '</td></tr>'; }).join('')
+      : '<tr><td colspan="3" style="text-align:center;color:#94a3b8">No data for this filter</td></tr>';
+    document.getElementById('tableStore').innerHTML = stores.length
+      ? stores.map(function(s) { return '<tr><td>' + (s.store_name || '—') + '</td><td class="r">€' + Number(s.revenue).toFixed(2) + '</td><td class="r">' + (s.order_count || 0) + '</td></tr>'; }).join('')
+      : '<tr><td colspan="3" style="text-align:center;color:#94a3b8">No data for this filter</td></tr>';
+  }
+
+  document.getElementById('filterTime').addEventListener('change', applyFilters);
+  document.getElementById('filterStore').addEventListener('change', applyFilters);
+
+  function setRaw(data) {
+    document.getElementById('loadingDash').style.display = 'none';
+    raw = data || {};
+    raw.by_month = raw.by_month || [];
+    raw.by_store = raw.by_store || [];
+    var isEmpty = raw.by_month.length === 0 && raw.by_store.length === 0;
+    document.getElementById('emptyState').style.display = isEmpty ? 'block' : 'none';
+    document.getElementById('dashboardWrap').style.display = isEmpty ? 'none' : 'block';
+    var storeSelect = document.getElementById('filterStore');
+    storeSelect.innerHTML = '<option value="">All stores</option>';
+    (raw.by_store || []).forEach(function(s) {
+      var opt = document.createElement('option');
+      opt.value = s.store_id;
+      opt.textContent = s.store_name || 'Store';
+      storeSelect.appendChild(opt);
+    });
+    applyFilters();
+  }
+
+  document.getElementById('loadingDash').style.display = 'block';
+  document.getElementById('dashboardWrap').style.display = 'block';
+  setRaw({});
+
+  var controller = new AbortController();
+  var timeout = setTimeout(function() { controller.abort(); }, 8000);
+
+  fetch(API + '/my-stores/analytics', {
+    headers: { 'Authorization': 'Bearer ' + token() },
+    signal: controller.signal
+  })
+    .then(function(res) {
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error('Could not load analytics.');
+      return res.json();
+    })
+    .then(function(data) {
+      hideErr();
+      setRaw(data);
+    })
+    .catch(function(err) {
+      clearTimeout(timeout);
+      document.getElementById('loadingDash').style.display = 'none';
+      document.getElementById('dashboardWrap').style.display = 'block';
+      if (err.name === 'AbortError') showErr('Request timed out. Is the server running at ' + API + '?');
+      else showErr('Could not load analytics. Check the server and login.');
+    });
+})();
+  </script>
+</body>
+</html>

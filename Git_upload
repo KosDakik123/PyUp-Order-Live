@@ -1,0 +1,22 @@
+Git uploading...
+
+# You're working on your project...
+# You edit some files: main.py, menu.html, script.js
+
+# Step 1: See what you changed
+git status
+# Output: 
+#   modified: main.py
+#   modified: static/menu.html
+#   modified: static/script.js
+
+# Step 2: Add all changes
+git add .
+
+# Step 3: Commit with clear message
+git commit -m "Add guest checkout feature for customers"
+
+# Step 4: Push to GitHub
+git push
+
+# Done! ✅

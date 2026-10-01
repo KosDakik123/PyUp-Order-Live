@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PyUp — Discover Stores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+/* ─── RESET ─── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f4;--white:#fff;--border:#e9e9e4;
+  --ink:#0f0f0f;--muted:#8a8a80;--accent:#e8420e;
+  --r:14px;--fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+}
+[data-theme="dark"]{--bg:#0f172a;--white:#1e293b;--border:#334155;--ink:#f1f5f9;--muted:#94a3b8}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--fb);cursor:pointer}
+
+/* ─── NAV ─── */
+nav{
+  position:sticky;top:0;z-index:400;
+  background:rgba(247,247,244,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  height:58px;padding:0 20px;display:flex;align-items:center;gap:12px;
+}
+.logo{font-family:var(--fh);font-weight:800;font-size:1.2rem;letter-spacing:-.4px;flex-shrink:0}
+.logo b{color:var(--accent);font-weight:800}
+
+.srchwrap{
+  flex:1;max-width:420px;margin:0 auto;
+  background:#ededea;border-radius:50px;
+  display:flex;align-items:center;padding:0 5px 0 14px;
+  border:1.5px solid transparent;transition:all .2s;
+}
+.srchwrap:focus-within{background:var(--white);border-color:var(--accent)}
+.srchwrap input{flex:1;border:none;outline:none;background:transparent;
+  font-family:var(--fb);font-size:.86rem;color:var(--ink);padding:8px 0;min-width:0}
+.srchwrap input::placeholder{color:#b8b8b0}
+.srchwrap button{background:var(--accent);color:#fff;border:none;border-radius:50px;
+  padding:5px 13px;font-size:.77rem;font-weight:600;transition:opacity .15s;flex-shrink:0}
+.srchwrap button:hover{opacity:.82}
+
+.nav-btns{display:flex;gap:7px;flex-shrink:0}
+.nbtn{padding:7px 15px;border-radius:50px;font-size:.82rem;font-weight:600;
+  border:1.5px solid var(--border);background:transparent;color:var(--ink);transition:all .18s}
+.nbtn:hover,.nbtn.solid:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.nbtn.solid{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* user pill */
+.upill{display:flex;align-items:center;gap:7px;background:#ededea;border-radius:50px;
+  padding:4px 12px 4px 4px;cursor:pointer;position:relative;user-select:none;transition:background .15s}
+.upill:hover{background:#e5e5e0}
+.uavatar{width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-family:var(--fh);font-size:.76rem;font-weight:800}
+.uname{font-size:.81rem;font-weight:600}
+.ucaret{font-size:.6rem;opacity:.4}
+
+.ddmenu{position:absolute;top:calc(100%+8px);right:0;min-width:194px;z-index:999;
+  background:var(--white);border:1px solid var(--border);border-radius:15px;
+  padding:5px;box-shadow:0 10px 40px rgba(0,0,0,.12);display:none}
+.ddmenu.show{display:block;animation:fadeIn .14s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+.ddhead{padding:9px 11px;border-bottom:1px solid var(--border);margin-bottom:3px}
+.ddhead strong{display:block;font-size:.86rem;font-family:var(--fh)}
+.ddhead small{font-size:.71rem;color:var(--muted)}
+.ddi{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;
+  border-radius:9px;border:none;background:transparent;
+  font-family:var(--fb);font-size:.82rem;font-weight:500;color:var(--ink);
+  text-align:left;transition:background .12s}
+.ddi:hover{background:#f3f3ef}
+.ddi.danger{color:#dc2626}
+.ddi.danger:hover{background:#fef2f2}
+.ddsep{height:1px;background:var(--border);margin:3px 0}
+
+/* ─── HERO ─── */
+.hero{background:var(--ink);color:#fff;padding:52px 20px 46px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse 65% 75% at 65% 15%,rgba(232,66,14,.3),transparent 58%),
+             radial-gradient(ellipse 45% 55% at 20% 85%,rgba(232,66,14,.13),transparent 55%)}
+.hero-in{position:relative;z-index:1;max-width:540px;margin:0 auto}
+.hero h1{font-family:var(--fh);font-size:clamp(2rem,5.5vw,3.2rem);
+  font-weight:800;line-height:1.06;letter-spacing:-1.5px;margin-bottom:10px}
+.hero h1 span{color:var(--accent)}
+.hero p{color:rgba(255,255,255,.48);font-size:.92rem;margin-bottom:26px}
+.hero-s{display:flex;background:#fff;border-radius:50px;padding:5px 5px 5px 20px;
+  box-shadow:0 8px 40px rgba(0,0,0,.26)}
+.hero-s input{flex:1;border:none;outline:none;font-family:var(--fb);font-size:.92rem;
+  color:var(--ink);background:transparent;min-width:0}
+.hero-s input::placeholder{color:#bbb}
+.hero-s button{background:var(--accent);color:#fff;border:none;border-radius:50px;
+  padding:10px 22px;font-weight:700;font-size:.84rem;transition:opacity .15s;white-space:nowrap}
+.hero-s button:hover{opacity:.86}
+
+/* ─── CAT BAR ─── */
+.catbar{background:var(--white);border-bottom:1px solid var(--border);
+  overflow-x:auto;scrollbar-width:none;position:sticky;top:58px;z-index:300}
+.catbar::-webkit-scrollbar{display:none}
+.catbar-in{display:flex;padding:0 14px;max-width:1180px;margin:0 auto;white-space:nowrap}
+.cbtn{display:inline-flex;align-items:center;gap:5px;padding:11px 12px;
+  border:none;background:transparent;font-family:var(--fb);font-size:.81rem;font-weight:600;
+  color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .15s}
+.cbtn:hover{color:var(--ink)}
+.cbtn.on{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ─── STORES GRID ─── */
+.main{max-width:1180px;margin:0 auto;padding:24px 14px 64px}
+.grid-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px}
+.grid-title{font-family:var(--fh);font-size:1.08rem;font-weight:800;letter-spacing:-.3px}
+.grid-count{font-size:.78rem;color:var(--muted)}
+.stores{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:15px}
+
+/* store card */
+.card{background:var(--white);border-radius:var(--r);overflow:hidden;
+  border:1px solid var(--border);display:flex;flex-direction:column;
+  transition:transform .22s,box-shadow .22s}
+.card:hover{transform:translateY(-5px);box-shadow:0 14px 44px rgba(0,0,0,.1)}
+.cthumb{height:155px;position:relative;overflow:hidden;flex-shrink:0;background:#e5e5e0}
+.cthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.noimg{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.9rem}
+
+/* category colour fills */
+.cfood      .noimg{background:linear-gradient(135deg,#ff9a9e,#fad0c4)}
+.cfashion   .noimg{background:linear-gradient(135deg,#c471f5,#fa71cd)}
+.cservices  .noimg{background:linear-gradient(135deg,#43e97b,#38f9d7)}
+.cbeauty    .noimg{background:linear-gradient(135deg,#f093fb,#f5576c)}
+.celectronics .noimg{background:linear-gradient(135deg,#4facfe,#00f2fe)}
+.chome      .noimg{background:linear-gradient(135deg,#f6d365,#fda085)}
+.chealth    .noimg{background:linear-gradient(135deg,#d4fc79,#96e6a1)}
+.cgroceries .noimg{background:linear-gradient(135deg,#84fab0,#8fd3f4)}
+.centertainment .noimg{background:linear-gradient(135deg,#ffd89b,#19547b)}
+.cpets      .noimg{background:linear-gradient(135deg,#a1c4fd,#c2e9fb)}
+
+.catbadge{position:absolute;top:9px;left:9px;
+  background:rgba(0,0,0,.48);backdrop-filter:blur(8px);
+  color:#fff;padding:2px 8px;border-radius:50px;font-size:.66rem;font-weight:700;
+  letter-spacing:.3px;text-transform:uppercase}
+.cbody{padding:13px 14px 15px;flex:1;display:flex;flex-direction:column}
+.cname{font-family:var(--fh);font-weight:700;font-size:.92rem;margin-bottom:4px}
+.cdesc{font-size:.78rem;color:var(--muted);line-height:1.45;flex:1;
+  display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cfoot{display:flex;align-items:center;justify-content:space-between;
+  margin-top:11px;padding-top:11px;border-top:1px solid var(--border)}
+.cowner{font-size:.72rem;color:var(--muted)}
+.copenbtn{background:var(--ink);color:#fff;border:none;border-radius:50px;
+  padding:5px 13px;font-size:.72rem;font-weight:700;transition:background .18s}
+.copenbtn:hover{background:var(--accent)}
+
+/* empty / error */
+.empty{grid-column:1/-1;text-align:center;padding:68px 16px;color:var(--muted)}
+.empty .eico{font-size:3rem;display:block;margin-bottom:13px}
+.empty h3{font-family:var(--fh);font-size:1.05rem;color:var(--ink);margin-bottom:6px}
+.empty p{font-size:.83rem}
+
+/* skeletons */
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk{background:linear-gradient(90deg,#eeeeeb 25%,#e4e4e0 50%,#eeeeeb 75%);
+  background-size:200% 100%;animation:shim 1.3s infinite}
+.scard{background:var(--white);border-radius:var(--r);border:1px solid var(--border);overflow:hidden}
+.simg{height:155px}
+.sbody{padding:13px}
+.sline{height:10px;border-radius:6px;margin-bottom:8px}
+
+/* ─── OVERLAYS / MODALS ─── */
+.overlay{display:none;position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.48);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+  align-items:center;justify-content:center;padding:14px}
+.overlay.open{display:flex}
+.modal{background:var(--white);border-radius:20px;padding:30px;width:100%;max-width:390px;
+  position:relative;box-shadow:0 28px 72px rgba(0,0,0,.22);animation:mup .24s ease}
+.modal.wide{max-width:500px}
+@keyframes mup{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.mclose{position:absolute;top:13px;right:13px;width:28px;height:28px;border-radius:50%;
+  background:none;border:none;font-size:1.1rem;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;transition:background .15s}
+.mclose:hover{background:#f0f0ea}
+.modal h2{font-family:var(--fh);font-size:1.28rem;font-weight:800;margin-bottom:3px}
+.msub{color:var(--muted);font-size:.81rem;margin-bottom:22px}
+.mfield{margin-bottom:13px}
+.mfield label{display:block;font-size:.71rem;font-weight:700;color:var(--muted);
+  margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.mfield input{width:100%;padding:10px 13px;border:1.5px solid var(--border);
+  border-radius:10px;font-family:var(--fb);font-size:.9rem;outline:none;
+  color:var(--ink);background:var(--white);transition:border-color .18s}
+.mfield input:focus{border-color:var(--accent)}
+.mbtn{width:100%;padding:12px;border-radius:11px;font-family:var(--fb);
+  font-size:.91rem;font-weight:700;border:none;background:var(--ink);color:#fff;
+  transition:background .18s;margin-top:2px}
+.mbtn:hover{background:var(--accent)}
+.mbtn:disabled{opacity:.5;cursor:not-allowed}
+.mswitch{text-align:center;margin-top:12px;font-size:.8rem;color:var(--muted)}
+.mswitch a{color:var(--accent);font-weight:700;cursor:pointer}
+.merr{display:none;padding:9px 12px;background:#fff1f0;border-left:3px solid #fca5a5;
+  border-radius:9px;color:#b91c1c;font-size:.79rem;margin-bottom:12px}
+
+/* settings */
+.ssec{margin-bottom:18px}
+.sseclbl{font-size:.69rem;font-weight:800;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--muted);margin-bottom:9px}
+.sinfo{background:#f4f4f0;border-radius:10px;padding:12px;font-size:.8rem;
+  color:var(--muted);line-height:1.8}
+.sinfo strong{color:var(--ink)}
+.srow{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 0;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.srow-l strong{display:block;font-size:.84rem;font-weight:600}
+.srow-l small{font-size:.73rem;color:var(--muted)}
+.sbtn{padding:6px 12px;border-radius:8px;font-family:var(--fb);font-size:.77rem;font-weight:600;
+  border:1.5px solid var(--border);background:transparent;color:var(--ink);
+  transition:all .15s;text-decoration:none;display:inline-block}
+.sbtn:hover{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+/* orders */
+.oitem{display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
+.oitem:last-child{border-bottom:none}
+.odetail{flex:1}
+.oname{font-weight:600;font-size:.86rem}
+.ometa{font-size:.74rem;color:var(--muted);margin-top:2px}
+.obadge{padding:2px 9px;border-radius:50px;font-size:.7rem;font-weight:700}
+.pending{background:#fff3cd;color:#92600a}
+.done{background:#dcfce7;color:#166534}
+
+/* ─── TOAST ─── */
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:10px 20px;border-radius:50px;
+  font-size:.82rem;font-weight:600;opacity:0;pointer-events:none;z-index:9999;
+  transition:opacity .25s;white-space:nowrap}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <a href="customer.html" class="logo">Py<b>Up</b></a>
+
+  <div class="srchwrap">
+    <input type="text" id="navQ" placeholder="Search stores, food, fashion…">
+    <button onclick="runSearch()">Search</button>
+  </div>
+
+  <button id="themeBtn" type="button" class="nbtn" title="Toggle dark mode" style="padding:6px 12px;font-size:1.1rem;flex-shrink:0">🌙</button>
+  <div class="nav-btns" id="navBtns">
+    <button class="nbtn" onclick="openM('loginModal')">Sign In</button>
+    <button class="nbtn solid" onclick="openM('registerModal')">Register</button>
+  </div>
+</nav>
+<script src="theme.js"></script>
+<script>window.themeInit();var tb=document.getElementById('themeBtn');if(tb){tb.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙';tb.onclick=function(){var t=window.themeToggle();tb.textContent=t==='dark'?'☀️':'🌙';};}</script>
+
+<!-- ══ HERO (shown when NOT logged in) ══ -->
+<section class="hero" id="heroSection">
+  <div class="hero-in">
+    <h1>Order <span>anything</span><br>from local stores</h1>
+    <p>Food, fashion, services and more — right at your fingertips</p>
+    <div class="hero-s">
+      <input type="text" id="heroQ" placeholder="What are you looking for?">
+      <button onclick="runSearch()">Search</button>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CATEGORY BAR ══ -->
+<div class="catbar">
+  <div class="catbar-in" id="catbar">
+    <button class="cbtn on"  data-c="all"           onclick="setCat('all')">🏠 All</button>
+    <button class="cbtn"     data-c="food"          onclick="setCat('food')">🍕 Food & Drinks</button>
+    <button class="cbtn"     data-c="fashion"       onclick="setCat('fashion')">👗 Fashion</button>
+    <button class="cbtn"     data-c="services"      onclick="setCat('services')">💼 Services</button>
+    <button class="cbtn"     data-c="beauty"        onclick="setCat('beauty')">💄 Beauty</button>
+    <button class="cbtn"     data-c="electronics"   onclick="setCat('electronics')">📱 Electronics</button>
+    <button class="cbtn"     data-c="home"          onclick="setCat('home')">🏠 Home</button>
+    <button class="cbtn"     data-c="health"        onclick="setCat('health')">💪 Health</button>
+    <button class="cbtn"     data-c="groceries"     onclick="setCat('groceries')">🛒 Groceries</button>
+    <button class="cbtn"     data-c="entertainment" onclick="setCat('entertainment')">🎮 Entertainment</button>
+    <button class="cbtn"     data-c="pets"          onclick="setCat('pets')">🐾 Pets</button>
+  </div>
+</div>
+
+<!-- ══ STORES ══ -->
+<div class="main">
+  <div class="grid-head">
+    <span class="grid-title" id="gridTitle">All Stores</span>
+    <span class="grid-count" id="gridCount"></span>
+  </div>
+  <div class="stores" id="storesGrid"></div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ MODAL: LOGIN ══ -->
+<div class="overlay" id="loginModal">
+  <div class="modal">
+    <button class="mclose" onclick="closeM('loginModal')">✕</button>
+    <h2>Welcome back</h2>
+    <p class="msub">Sign in to your account</p>
+    <div class="merr" id="loginErr"></div>
+    <div class="mfield">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Your username" autocomplete="username">
+    </div>
+    <div class="mfield">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="mbtn" id="loginBtn" onclick="doLogin()">Sign In</button>
+    <div class="mswitch">No account? <a onclick="switchM('loginModal','registerModal')">Create one free</a></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: REGISTER ══ -->
+<div class="overlay" id="registerModal">
+  <div class="modal">
+    <button class="mclose" onclick="closeM('registerModal')">✕</button>
+    <h2>Create account</h2>
+    <p class="msub">Join PyUp and start ordering</p>
+    <div class="merr" id="regErr"></div>
+    <div class="mfield">
+      <label>Username</label>
+      <input type="text" id="regUser" placeholder="Pick a username" autocomplete="username">
+    </div>
+    <div class="mfield">
+      <label>Email</label>
+      <input type="email" id="regEmail" placeholder="you@email.com" autocomplete="email">
+    </div>
+    <div class="mfield">
+      <label>Password</label>
+      <input type="password" id="regPass" placeholder="Min. 6 characters" autocomplete="new-password">
+    </div>
+    <button class="mbtn" id="regBtn" onclick="doRegister()">Create Account</button>
+    <div class="mswitch">Already have an account? <a onclick="switchM('registerModal','loginModal')">Sign in</a></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: SETTINGS ══ -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <button class="mclose" onclick="closeM('settingsModal')">✕</button>
+    <h2>⚙️ Settings</h2>
+    <p class="msub">Your account</p>
+    <div class="ssec">
+      <div class="sseclbl">Account</div>
+      <div class="sinfo">
+        <strong>Username:</strong> <span id="sName">—</span><br>
+        <strong>Account type:</strong> Customer
+      </div>
+    </div>
+    <div class="ssec">
+      <div class="sseclbl">Actions</div>
+      <div class="srow">
+        <div class="srow-l"><strong>My Orders</strong><small>View your order history</small></div>
+        <button class="sbtn" onclick="closeM('settingsModal');showOrders()">View →</button>
+      </div>
+    </div>
+    <button class="mbtn" onclick="doLogout()"
+      style="background:#fff;color:#dc2626;border:1.5px solid #fca5a5">
+      🚪 Sign Out
+    </button>
+  </div>
+</div>
+
+<!-- ══ MODAL: MY ORDERS ══ -->
+<div class="overlay" id="ordersModal">
+  <div class="modal wide">
+    <button class="mclose" onclick="closeM('ordersModal')">✕</button>
+    <h2>📦 My Orders</h2>
+    <p class="msub">Your recent order history</p>
+    <div id="ordersContent" style="max-height:420px;overflow-y:auto;margin-top:4px"></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+
+// ════════════════════════════════════════════════
+//  CATEGORY META
+// ════════════════════════════════════════════════
+const CATS = {
+  all:           {label:'All Stores',        icon:'🏠'},
+  food:          {label:'Food & Drinks',     icon:'🍕'},
+  fashion:       {label:'Fashion',           icon:'👗'},
+  services:      {label:'Services',          icon:'💼'},
+  beauty:        {label:'Beauty',            icon:'💄'},
+  electronics:   {label:'Electronics',       icon:'📱'},
+  home:          {label:'Home & Living',     icon:'🏠'},
+  health:        {label:'Health & Fitness',  icon:'💪'},
+  groceries:     {label:'Groceries',         icon:'🛒'},
+  entertainment: {label:'Entertainment',     icon:'🎮'},
+  pets:          {label:'Pets',              icon:'🐾'},
+};
+
+// ════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════
+let STORES       = [];
+let activeCat    = 'all';
+let activeSearch = '';
+let searchTimer  = null;
+
+// ════════════════════════════════════════════════
+//  STORAGE HELPERS
+// ════════════════════════════════════════════════
+const getToken = () => localStorage.getItem('customerToken');
+const getUser  = () => localStorage.getItem('customerName');
+const setAuth  = (token, name) => {
+  localStorage.setItem('customerToken', token);
+  localStorage.setItem('customerName', name);
+};
+const clearAuth = () => {
+  localStorage.removeItem('customerToken');
+  localStorage.removeItem('customerName');
+};
+
+// ════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════════════════
+//  MODAL HELPERS
+// ════════════════════════════════════════════════
+function openM(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeM(id) {
+  document.getElementById(id).classList.remove('open');
+}
+function switchM(from, to) {
+  closeM(from);
+  openM(to);
+}
+
+// close when clicking backdrop
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target === el) el.classList.remove('open');
+  });
+});
+
+// submit on Enter key
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('loginModal').classList.contains('open'))    doLogin();
+  if (document.getElementById('registerModal').classList.contains('open')) doRegister();
+});
+
+// show error inside modal
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+function hideErr(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+// ════════════════════════════════════════════════
+//  NAV — build depending on login state
+// ════════════════════════════════════════════════
+function buildNav() {
+  const token = getToken();
+  const hero  = document.getElementById('heroSection');
+  const btns  = document.getElementById('navBtns');
+
+  if (!token) {
+    // NOT logged in: show hero + sign-in buttons
+    hero.style.display = '';
+    btns.innerHTML = `
+      <button class="nbtn" onclick="openM('loginModal')">Sign In</button>
+      <button class="nbtn solid" onclick="openM('registerModal')">Register</button>`;
+    return;
+  }
+
+  // LOGGED IN: hide hero, show user pill
+  hero.style.display = 'none';
+  const name = getUser() || 'User';
+  const letter = name.charAt(0).toUpperCase();
+
+  btns.innerHTML = `
+    <div class="upill" id="upill" onclick="toggleDrop(event)">
+      <div class="uavatar">${letter}</div>
+      <span class="uname">${name}</span>
+      <span class="ucaret">▾</span>
+      <div class="ddmenu" id="ddmenu">
+        <div class="ddhead">
+          <strong>${name}</strong>
+          <small>Customer Account</small>
+        </div>
+        <button class="ddi" onclick="stopBubble(event);openSettings()">⚙️&nbsp; Settings</button>
+        <button class="ddi" onclick="stopBubble(event);showOrders()">📦&nbsp; My Orders</button>
+        <div class="ddsep"></div>
+        <button class="ddi danger" onclick="stopBubble(event);doLogout()">🚪&nbsp; Sign Out</button>
+      </div>
+    </div>`;
+
+  // Update settings modal name field
+  const sn = document.getElementById('sName');
+  if (sn) sn.textContent = name;
+}
+
+function stopBubble(e) { e.stopPropagation(); }
+
+function toggleDrop(e) {
+  e.stopPropagation();
+  document.getElementById('ddmenu').classList.toggle('show');
+}
+// close dropdown when clicking elsewhere
+document.addEventListener('click', () => {
+  const dd = document.getElementById('ddmenu');
+  if (dd) dd.classList.remove('show');
+});
+
+function openSettings() {
+  const sn = document.getElementById('sName');
+  if (sn) sn.textContent = getUser() || '—';
+  openM('settingsModal');
+}
+
+// ════════════════════════════════════════════════
+//  REGISTER
+// ════════════════════════════════════════════════
+async function doRegister() {
+  const username = document.getElementById('regUser').value.trim();
+  const email    = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPass').value;
+
+  hideErr('regErr');
+
+  if (!username) { showErr('regErr', 'Please enter a username.'); return; }
+  if (!email)    { showErr('regErr', 'Please enter your email address.'); return; }
+  if (!password) { showErr('regErr', 'Please enter a password.'); return; }
+  if (password.length < 6) { showErr('regErr', 'Password must be at least 6 characters.'); return; }
+
+  const btn = document.getElementById('regBtn');
+  btn.textContent = 'Creating account…';
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch(API + '/register', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, email, password })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      // success — switch to login with name pre-filled
+      closeM('registerModal');
+      document.getElementById('regUser').value  = '';
+      document.getElementById('regEmail').value = '';
+      document.getElementById('regPass').value  = '';
+      document.getElementById('loginUser').value = username;
+      document.getElementById('loginPass').focus();
+      toast('✅ Account created! Now sign in.');
+      openM('loginModal');
+    } else {
+      showErr('regErr', data.detail || 'Registration failed. Username may already be taken.');
+    }
+  } catch (err) {
+    showErr('regErr', '⚠️ Cannot connect to server. Is the backend running?');
+    console.error('[Register]', err);
+  } finally {
+    btn.textContent = 'Create Account';
+    btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value;
+
+  hideErr('loginErr');
+
+  if (!username) { showErr('loginErr', 'Please enter your username.'); return; }
+  if (!password) { showErr('loginErr', 'Please enter your password.'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch(API + '/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      if (data.role === 'admin') {
+        showErr('loginErr', 'Admin accounts must use the admin panel.');
+        return;
+      }
+      setAuth(data.access_token, username);
+      document.getElementById('loginPass').value = '';
+      closeM('loginModal');
+      toast('Welcome back, ' + username + '! 👋');
+      buildNav(); // rebuild navbar — no page reload needed
+    } else {
+      showErr('loginErr', data.detail || 'Incorrect username or password.');
+    }
+  } catch (err) {
+    showErr('loginErr', '⚠️ Cannot connect to server. Is the backend running?');
+    console.error('[Login]', err);
+  } finally {
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════
+//  LOGOUT
+// ════════════════════════════════════════════════
+function doLogout() {
+  clearAuth();
+  closeM('settingsModal');
+  toast('Signed out. See you soon! 👋');
+  setTimeout(() => location.reload(), 900);
+}
+
+// ════════════════════════════════════════════════
+//  MY ORDERS
+// ════════════════════════════════════════════════
+async function showOrders() {
+  if (!getToken()) { openM('loginModal'); return; }
+
+  const content = document.getElementById('ordersContent');
+  content.innerHTML = '<p style="text-align:center;padding:32px;color:var(--muted)">Loading…</p>';
+  openM('ordersModal');
+
+  try {
+    const res = await fetch(API + '/orders', {
+      headers: { 'Authorization': 'Bearer ' + getToken() }
+    });
+    if (!res.ok) {
+      content.innerHTML = '<p style="color:#dc2626;padding:12px">Could not load orders (HTTP ' + res.status + ').</p>';
+      return;
+    }
+    const orders = await res.json();
+    if (!orders.length) {
+      content.innerHTML = `
+        <div style="text-align:center;padding:44px 16px;color:var(--muted)">
+          <div style="font-size:3rem;margin-bottom:12px">📦</div>
+          <h3 style="font-family:var(--fh);color:var(--ink);margin-bottom:6px">No orders yet</h3>
+          <p>Open a store and place your first order!</p>
+        </div>`;
+      return;
+    }
+    content.innerHTML = orders.map(o => `
+      <div class="oitem">
+        <div class="odetail">
+          <div class="oname">${o.service_name}</div>
+          <div class="ometa">${o.store_name} &middot; €${o.price} &middot; ${new Date(o.created_at).toLocaleDateString()}</div>
+        </div>
+        <span class="obadge ${o.status === 'Completed' ? 'done' : 'pending'}">${o.status}</span>
+      </div>`).join('');
+  } catch (err) {
+    content.innerHTML = '<p style="color:#dc2626;padding:12px">⚠️ Connection error.</p>';
+    console.error('[Orders]', err);
+  }
+}
+
+// ════════════════════════════════════════════════
+//  LOAD ALL STORES  (single fetch, filter client-side)
+// ════════════════════════════════════════════════
+function showSkeletons() {
+  document.getElementById('storesGrid').innerHTML = Array(8).fill(`
+    <div class="scard">
+      <div class="sk simg"></div>
+      <div class="sbody">
+        <div class="sk sline" style="width:62%;margin-bottom:8px"></div>
+        <div class="sk sline" style="width:88%;margin-bottom:7px"></div>
+        <div class="sk sline" style="width:44%"></div>
+      </div>
+    </div>`).join('');
+}
+
+async function loadStores() {
+  showSkeletons();
+  try {
+    const res = await fetch(API + '/stores');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    STORES = await res.json();
+    console.log('[PyUp] Loaded', STORES.length, 'stores from', API);
+    renderGrid();
+  } catch (err) {
+    console.error('[LoadStores]', err);
+    document.getElementById('storesGrid').innerHTML = `
+      <div class="empty">
+        <span class="eico">⚠️</span>
+        <h3>Cannot connect to server</h3>
+        <p>Make sure the backend is running on <strong>${API}</strong></p>
+      </div>`;
+  }
+}
+
+// ════════════════════════════════════════════════
+//  RENDER GRID  (pure client-side filter)
+// ════════════════════════════════════════════════
+function renderGrid() {
+  let list = STORES;
+
+  // 1. Category filter
+  if (activeCat !== 'all') {
+    list = list.filter(s => s.category === activeCat);
+  }
+
+  // 2. Text search (name + description + owner)
+  if (activeSearch) {
+    const q = activeSearch.toLowerCase();
+    list = list.filter(s =>
+      (s.name        || '').toLowerCase().includes(q) ||
+      (s.description || '').toLowerCase().includes(q) ||
+      (s.owner_name  || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Update header
+  const meta = CATS[activeCat] || CATS.all;
+  document.getElementById('gridTitle').textContent =
+    activeSearch ? 'Results for "' + activeSearch + '"' : meta.label;
+  document.getElementById('gridCount').textContent =
+    list.length ? list.length + ' store' + (list.length !== 1 ? 's' : '') : '';
+
+  const grid = document.getElementById('storesGrid');
+
+  if (!list.length) {
+    grid.innerHTML = `
+      <div class="empty">
+        <span class="eico">${activeSearch ? '🔍' : meta.icon}</span>
+        <h3>${activeSearch ? 'No results found' : 'No stores here yet'}</h3>
+        <p>${activeSearch ? 'Try different keywords or clear the search' : 'No ' + meta.label + ' stores added yet. Check back later or try another category.'}</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(s => {
+    const m   = CATS[s.category] || CATS.services;
+    const cat = s.category || 'services';
+    const img = s.banner_image_url
+      ? `<img src="${s.banner_image_url}" alt="${s.name}" loading="lazy">`
+      : `<div class="noimg">${m.icon}</div>`;
+    return `
+      <a href="store-view.html?store=${s.id}" class="card c${cat}">
+        <div class="cthumb">
+          ${img}
+          <span class="catbadge">${m.icon} ${m.label}</span>
+        </div>
+        <div class="cbody">
+          <div class="cname">${s.name}</div>
+          <div class="cdesc">${s.description || 'Browse our selection'}</div>
+          <div class="cfoot">
+            <span class="cowner">by ${s.owner_name}</span>
+            <button class="copenbtn"
+              onclick="event.preventDefault();event.stopPropagation();location.href='store-view.html?store=${s.id}'">
+              Open →
+            </button>
+          </div>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+//  CATEGORY FILTER
+// ════════════════════════════════════════════════
+function setCat(cat) {
+  activeCat = cat;
+  document.querySelectorAll('.cbtn').forEach(b => {
+    b.classList.toggle('on', b.dataset.c === cat);
+  });
+  renderGrid();
+}
+
+// ════════════════════════════════════════════════
+//  SEARCH
+// ════════════════════════════════════════════════
+function runSearch() {
+  // Pull from whichever input is visible
+  const heroVisible = document.getElementById('heroSection').style.display !== 'none';
+  const val = heroVisible
+    ? document.getElementById('heroQ').value.trim()
+    : document.getElementById('navQ').value.trim();
+  activeSearch = val;
+  syncSearchInputs();
+  renderGrid();
+}
+
+function syncSearchInputs() {
+  document.getElementById('heroQ').value = activeSearch;
+  document.getElementById('navQ').value  = activeSearch;
+}
+
+// Live typing search
+['heroQ', 'navQ'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function () {
+    activeSearch = this.value.trim();
+    syncSearchInputs();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderGrid, 200);
+  });
+});
+
+// ════════════════════════════════════════════════
+//  BOOT — runs immediately, DOM is already ready
+//  (script tag is at bottom of body)
+// ════════════════════════════════════════════════
+buildNav();   // set up nav based on login state
+loadStores(); // fetch stores and render
+</script>
+</body>
+</html>

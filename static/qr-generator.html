@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate QR Code</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .qr-container {
+            text-align: center;
+            padding: 40px;
+        }
+        .qr-code {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+        <span class="navbar-brand">📱 QR Code Generator</span>
+        <a href="admin.html" class="btn btn-primary btn-sm">Back to Admin</a>
+    </div>
+</nav>
+
+<div class="container mt-5">
+    <div class="qr-container">
+        <h2>📱 Customer Ordering QR Code</h2>
+        <p class="text-muted">Share this QR code with customers so they can scan and order</p>
+        
+        <div class="qr-code">
+            <img id="qrCodeImage" src="" alt="QR Code" style="width: 100%; display:none;">
+            <div id="qrPlaceholder">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Generating QR Code...</p>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h5>Customer URL:</h5>
+            <div class="input-group mb-3">
+                <input type="text" id="customerUrl" class="form-control" readonly>
+                <button class="btn btn-primary" onclick="copyUrl()">📋 Copy URL</button>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button onclick="downloadQR()" class="btn btn-success btn-lg me-2">
+                ⬇️ Download QR Code
+            </button>
+            <button onclick="printQR()" class="btn btn-secondary btn-lg">
+                🖨️ Print QR Code
+            </button>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <h4>📋 Instructions:</h4>
+        <ol>
+            <li><strong>Download</strong> or <strong>Print</strong> the QR code above</li>
+            <li><strong>Display</strong> it in your store, on your website, or in marketing materials</li>
+            <li>Customers <strong>scan</strong> the QR code with their phone camera</li>
+            <li>They're taken to the ordering page where they can:
+                <ul>
+                    <li>Register as a new customer</li>
+                    <li>Browse available services</li>
+                    <li>Place orders instantly</li>
+                </ul>
+            </li>
+            <li>You'll see all orders in the <strong>Admin Panel</strong></li>
+        </ol>
+
+        <div class="alert alert-info mt-3">
+            <strong>💡 Tip:</strong> You can also share the customer URL directly via SMS, email, or social media!
+        </div>
+    </div>
+</div>
+
+<script>
+const customerUrl = window.location.origin + "/static/customer.html"
+document.getElementById("customerUrl").value = customerUrl
+
+// Generate QR Code using API
+function generateQRCode() {
+    // Using a free QR code API
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(customerUrl)}`
+    
+    const img = document.getElementById("qrCodeImage")
+    img.src = qrApiUrl
+    img.style.display = "block"
+    document.getElementById("qrPlaceholder").style.display = "none"
+}
+
+function copyUrl() {
+    const urlInput = document.getElementById("customerUrl")
+    urlInput.select()
+    document.execCommand("copy")
+    alert("✅ URL copied to clipboard!")
+}
+
+function downloadQR() {
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${encodeURIComponent(customerUrl)}`
+    const link = document.createElement('a')
+    link.href = qrApiUrl
+    link.download = 'customer-ordering-qr.png'
+    link.click()
+}
+
+function printQR() {
+    window.print()
+}
+
+// Generate QR on load
+generateQRCode()
+</script>
+
+<style media="print">
+    nav, .instructions, button { display: none !important; }
+    .qr-container { padding: 0; }
+    body { background: white !important; }
+</style>
+
+</body>
+</html>
