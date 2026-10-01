@@ -28,7 +28,10 @@ class User(Base):
     hashed_password = Column(String)
     role = Column(String, default="user")
 
-    # ── Email verification ──────────────────────────────────────────────────
+    # ── Phone verification ──────────────────────────────────────────────────
+    phone              = Column(String, unique=True, nullable=True)
+    phone_code         = Column(String, nullable=True)
+    phone_code_expires = Column(String, nullable=True)
     is_verified        = Column(Boolean, default=False)
     verification_token = Column(String, nullable=True)
     # ────────────────────────────────────────────────────────────────────────

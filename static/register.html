@@ -9,10 +9,11 @@
 <!-- Registration Form -->
 <div id="registerCard" class="card p-4 shadow" style="width:400px;">
     <h3 class="mb-1">Create Account</h3>
-    <p class="text-muted small mb-3">A verification link will be sent to your email.</p>
+    <p class="text-muted small mb-3">A verification code will be sent to your mobile number.</p>
 
     <input id="username" class="form-control mb-2" placeholder="Username" autocomplete="username">
     <input id="email"    class="form-control mb-2" placeholder="Email"    type="email" autocomplete="email">
+    <input id="phone"    class="form-control mb-2" placeholder="Mobile number, e.g. 091 985 0571" type="tel" autocomplete="tel">
     <input id="password" class="form-control mb-3" placeholder="Password" type="password" autocomplete="new-password">
 
     <div id="registerError" class="alert alert-danger py-2 small d-none"></div>
@@ -25,16 +26,19 @@
 
 <!-- Email Sent State (hidden until registration succeeds) -->
 <div id="successCard" class="card p-4 shadow text-center d-none" style="width:420px;">
-    <div style="font-size:3rem">📧</div>
-    <h4 class="mt-2">Check your email!</h4>
+    <div style="font-size:3rem">📱</div>
+    <h4 class="mt-2">Check your phone</h4>
     <p class="text-muted" id="successMsg">
-        We've sent a verification link to <strong id="sentTo"></strong>.
-        Click the link in the email to activate your account.
+        We sent a code by text message to <strong id="sentTo"></strong>.
+        Enter it here to activate your account.
     </p>
+    <input id="code" class="form-control mb-3" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code">
+    <button onclick="verifyPhone()" id="verifyBtn" class="btn btn-success w-100">Verify</button>
+    <div id="verifyMsg" class="mt-2 small d-none"></div>
     <hr>
     <p class="text-muted small">Didn't receive it?</p>
     <button onclick="resendVerification()" id="resendBtn" class="btn btn-outline-secondary btn-sm">
-        Resend verification email
+        Send the code again
     </button>
     <div id="resendMsg" class="mt-2 small text-success d-none"></div>
     <a href="login.html" class="mt-3 d-block small">Go to Login</a>
@@ -42,7 +46,14 @@
 
 <script src="config.js"></script>
 <script>
-let registeredEmail = ""
+let registeredUsername = ""
+
+function showCodeStep(phone, note) {
+    document.getElementById("sentTo").textContent = phone
+    if (note) document.getElementById("successMsg").insertAdjacentText("beforeend", " " + note)
+    document.getElementById("registerCard").classList.add("d-none")
+    document.getElementById("successCard").classList.remove("d-none")
+}
 
 async function register() {
     const btn = document.getElementById("registerBtn")
@@ -50,9 +61,10 @@ async function register() {
 
     const username = document.getElementById("username").value.trim()
     const email    = document.getElementById("email").value.trim()
+    const phone    = document.getElementById("phone").value.trim()
     const password = document.getElementById("password").value
 
-    if (!username || !email || !password) {
+    if (!username || !email || !phone || !password) {
         showError("Please fill in all fields.")
         return
     }
@@ -65,25 +77,16 @@ async function register() {
         const res = await fetch(`${API}/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username, email, password })
+            body: JSON.stringify({ username, email, phone, password })
         })
         const data = await res.json()
 
         if (res.ok) {
-            registeredEmail = email
-            document.getElementById("sentTo").textContent = email
-            document.getElementById("registerCard").classList.add("d-none")
-            document.getElementById("successCard").classList.remove("d-none")
-
-            // Development helper: show direct verify link if token is returned
-            if (data.dev_verify_token) {
-                const link = `${API}/verify-email?token=${data.dev_verify_token}`
-                document.getElementById("successMsg").innerHTML +=
-                    `<br><br><small class="text-muted">
-                        <strong>Dev mode:</strong> 
-                        <a href="${link}" target="_blank">Click here to verify instantly</a>
-                    </small>`
-            }
+            registeredUsername = username
+            showCodeStep(data.phone || phone)
+        } else if (res.status === 503) {
+            registeredUsername = username
+            showCodeStep(phone, "The text did not go out. Send it again.")
         } else {
             showError(data.detail || "Registration failed. Please try again.")
         }
@@ -92,6 +95,32 @@ async function register() {
     } finally {
         btn.disabled = false
         btn.textContent = "Register"
+    }
+}
+
+async function verifyPhone() {
+    const btn = document.getElementById("verifyBtn")
+    const msgEl = document.getElementById("verifyMsg")
+    const code = document.getElementById("code").value.trim()
+    btn.disabled = true
+    msgEl.classList.add("d-none")
+    try {
+        const res = await fetch(`${API}/verify-phone`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: registeredUsername, code })
+        })
+        const data = await res.json()
+        msgEl.textContent = data.detail || data.message || "Verified."
+        msgEl.classList.remove("d-none", "text-danger", "text-success")
+        msgEl.classList.add(res.ok ? "text-success" : "text-danger")
+        if (res.ok) setTimeout(() => { window.location.href = "login.html" }, 800)
+    } catch (err) {
+        msgEl.textContent = "Could not reach the server."
+        msgEl.classList.remove("d-none")
+        msgEl.classList.add("text-danger")
+    } finally {
+        btn.disabled = false
     }
 }
 
@@ -107,18 +136,18 @@ async function resendVerification() {
         const res = await fetch(`${API}/resend-verification`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: registeredEmail })
+            body: JSON.stringify({ username: registeredUsername })
         })
         const data = await res.json()
-        msgEl.textContent = data.message || "Email sent!"
+        msgEl.textContent = data.detail || data.message || "Text sent."
         msgEl.classList.remove("d-none")
     } catch (err) {
-        msgEl.textContent = "Failed to resend. Please try again."
+        msgEl.textContent = "Failed to send. Please try again."
         msgEl.classList.remove("d-none")
         msgEl.classList.replace("text-success", "text-danger")
     } finally {
         btn.disabled = false
-        btn.textContent = "Resend verification email"
+        btn.textContent = "Send the code again"
         setTimeout(() => msgEl.classList.add("d-none"), 5000)
     }
 }

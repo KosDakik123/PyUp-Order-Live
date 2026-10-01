@@ -329,8 +329,21 @@ nav{
       <input type="email" id="regEmail" placeholder="you@email.com" autocomplete="email">
     </div>
     <div class="mfield">
+      <label>Mobile number</label>
+      <input type="tel" id="regPhone" placeholder="091 985 0571" autocomplete="tel">
+    </div>
+    <div class="mfield">
       <label>Password</label>
       <input type="password" id="regPass" placeholder="Min. 6 characters" autocomplete="new-password">
+    </div>
+    <div id="regCodeWrap" style="display:none">
+      <p class="msub" id="regCodeHint">Enter the code from the text message.</p>
+      <div class="mfield">
+        <label>Code</label>
+        <input type="text" id="regCode" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button class="mbtn" id="verifyBtn" onclick="doVerifyPhone()">Verify phone</button>
+      <button class="mbtn" id="resendBtn" onclick="resendPhoneCode()" style="margin-top:8px;background:#fff;color:#111;border:1.5px solid #e9e9e4">Send the code again</button>
     </div>
     <button class="mbtn" id="regBtn" onclick="doRegister()">Create Account</button>
     <div class="mswitch">Already have an account? <a onclick="switchM('registerModal','loginModal')">Sign in</a></div>
@@ -451,7 +464,10 @@ document.querySelectorAll('.overlay').forEach(el => {
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   if (document.getElementById('loginModal').classList.contains('open'))    doLogin();
-  if (document.getElementById('registerModal').classList.contains('open')) doRegister();
+  if (document.getElementById('registerModal').classList.contains('open')) {
+    if (document.getElementById('regCodeWrap').style.display === 'block') doVerifyPhone();
+    else doRegister();
+  }
 });
 
 // show error inside modal
@@ -530,15 +546,25 @@ function openSettings() {
 // ════════════════════════════════════════════════
 //  REGISTER
 // ════════════════════════════════════════════════
+let pendingUsername = '';
+
+function showPhoneCodeStep(note) {
+  document.getElementById('regBtn').style.display = 'none';
+  document.getElementById('regCodeWrap').style.display = 'block';
+  if (note) document.getElementById('regCodeHint').textContent = note;
+}
+
 async function doRegister() {
   const username = document.getElementById('regUser').value.trim();
   const email    = document.getElementById('regEmail').value.trim();
+  const phone    = document.getElementById('regPhone').value.trim();
   const password = document.getElementById('regPass').value;
 
   hideErr('regErr');
 
   if (!username) { showErr('regErr', 'Please enter a username.'); return; }
   if (!email)    { showErr('regErr', 'Please enter your email address.'); return; }
+  if (!phone)    { showErr('regErr', 'Please enter your mobile number.'); return; }
   if (!password) { showErr('regErr', 'Please enter a password.'); return; }
   if (password.length < 6) { showErr('regErr', 'Password must be at least 6 characters.'); return; }
 
@@ -550,20 +576,18 @@ async function doRegister() {
     const res  = await fetch(API + '/register', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ username, email, password })
+      body:    JSON.stringify({ username, email, phone, password })
     });
     const data = await res.json();
 
     if (res.ok) {
-      // success — switch to login with name pre-filled
-      closeM('registerModal');
-      document.getElementById('regUser').value  = '';
-      document.getElementById('regEmail').value = '';
-      document.getElementById('regPass').value  = '';
-      document.getElementById('loginUser').value = username;
-      document.getElementById('loginPass').focus();
-      toast('✅ Account created! Now sign in.');
-      openM('loginModal');
+      pendingUsername = username;
+      showPhoneCodeStep('We sent a text to ' + (data.phone || phone) + '. Enter the code.');
+      toast('Check your phone for the code.');
+    } else if (res.status === 503) {
+      pendingUsername = username;
+      showPhoneCodeStep('Account saved, but the text did not go out. Send it again.');
+      showErr('regErr', data.detail || 'The text message could not be sent.');
     } else {
       showErr('regErr', data.detail || 'Registration failed. Username may already be taken.');
     }
@@ -572,6 +596,54 @@ async function doRegister() {
     console.error('[Register]', err);
   } finally {
     btn.textContent = 'Create Account';
+    btn.disabled = false;
+  }
+}
+
+async function doVerifyPhone() {
+  const code = document.getElementById('regCode').value.trim();
+  hideErr('regErr');
+  if (!code) { showErr('regErr', 'Enter the code from the text message.'); return; }
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + '/verify-phone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: pendingUsername, code })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      closeM('registerModal');
+      document.getElementById('loginUser').value = pendingUsername;
+      toast('Phone verified. You can sign in.');
+      openM('loginModal');
+    } else {
+      showErr('regErr', data.detail || 'That code is not valid.');
+    }
+  } catch (err) {
+    showErr('regErr', '⚠️ Cannot connect to server.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function resendPhoneCode() {
+  hideErr('regErr');
+  const btn = document.getElementById('resendBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch(API + '/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: pendingUsername })
+    });
+    const data = await res.json();
+    if (res.ok && data.sms_sent) toast('A new code was sent.');
+    else showErr('regErr', data.detail || data.message || 'Could not send the text.');
+  } catch (err) {
+    showErr('regErr', '⚠️ Cannot connect to server.');
+  } finally {
     btn.disabled = false;
   }
 }

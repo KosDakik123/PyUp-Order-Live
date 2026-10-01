@@ -1,6 +1,8 @@
+import hashlib
 import os
 import secrets
 import smtplib
+import subprocess
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -36,6 +38,75 @@ def create_access_token(user_id: str):
 def generate_verification_token() -> str:
     """Generate a secure random URL-safe token."""
     return secrets.token_urlsafe(32)
+
+
+def normalize_phone(raw: str) -> str:
+    """Turn a typed phone number into +385... form."""
+    text = (raw or "").strip()
+    digits = "".join(ch for ch in text if ch.isdigit())
+    if not digits:
+        raise ValueError("Enter a mobile number.")
+    if text.startswith("+"):
+        return "+" + digits
+    if digits.startswith("00"):
+        return "+" + digits[2:]
+    if digits.startswith("0"):
+        digits = "385" + digits[1:]
+    elif not digits.startswith("385"):
+        digits = "385" + digits
+    if len(digits) < 11 or len(digits) > 15:
+        raise ValueError("That mobile number does not look valid.")
+    return "+" + digits
+
+
+def generate_phone_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def hash_phone_code(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def send_sms(phone: str, message: str) -> bool:
+    """Send a text from this Mac through the Messages app."""
+    script = """
+on run argv
+  set msgText to item 1 of argv
+  set phoneNumber to item 2 of argv
+  set wanted to item 3 of argv
+  tell application "Messages"
+    set chosenAccount to missing value
+    repeat with oneAccount in accounts
+      try
+        if (service type of oneAccount as string) is wanted then
+          set chosenAccount to oneAccount
+          exit repeat
+        end if
+      end try
+    end repeat
+    if chosenAccount is missing value then error "No " & wanted & " account"
+    set targetBuddy to participant phoneNumber of chosenAccount
+    send msgText to targetBuddy
+  end tell
+end run
+"""
+    for service in ("SMS", "iMessage"):
+        try:
+            subprocess.run(
+                ["osascript", "-", message, phone, service],
+                input=script,
+                text=True,
+                capture_output=True,
+                timeout=40,
+                check=True,
+            )
+            return True
+        except subprocess.CalledProcessError as exc:
+            detail = (exc.stderr or exc.stdout or "").strip()
+            print(f"[auth] {service} send failed: {detail}")
+        except Exception as exc:
+            print(f"[auth] {service} send failed: {exc}")
+    return False
 
 
 def send_verification_email(to_email: str, token: str, base_url: str) -> bool:

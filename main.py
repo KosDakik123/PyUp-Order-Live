@@ -14,7 +14,7 @@ import models
 from database import engine, SessionLocal
 from auth import (
     hash_password, verify_password, create_access_token,
-    generate_verification_token, send_verification_email,
+    normalize_phone, generate_phone_code, hash_phone_code, send_sms,
     SECRET_KEY, ALGORITHM,
 )
 
@@ -41,6 +41,9 @@ def _migrate(db):
         ("services", "image_url",          "VARCHAR"),
         ("users",    "is_verified",        "BOOLEAN DEFAULT 1"),
         ("users",    "verification_token", "VARCHAR"),
+        ("users",    "phone",              "VARCHAR"),
+        ("users",    "phone_code",         "VARCHAR"),
+        ("users",    "phone_code_expires", "VARCHAR"),
     ]
     for table, col, typedef in pairs:
         if not has(table, col):
@@ -95,32 +98,66 @@ def get_admin(user=Depends(get_current_user)):
 
 # ============= AUTH =============
 
+def _issue_phone_code(user):
+    from datetime import datetime, timedelta
+    code = generate_phone_code()
+    user.phone_code = hash_phone_code(code)
+    user.phone_code_expires = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    return code
+
+
+def _phone_code_still_fresh(user, seconds=30):
+    from datetime import datetime, timedelta
+    if not user.phone_code_expires:
+        return False
+    try:
+        expires = datetime.fromisoformat(user.phone_code_expires)
+    except ValueError:
+        return False
+    sent_at = expires - timedelta(minutes=10)
+    return datetime.utcnow() - sent_at < timedelta(seconds=seconds)
+
+
 @app.post("/register")
-def register(data: dict, request: Request, db: Session = Depends(get_db)):
+def register(data: dict, db: Session = Depends(get_db)):
+    try:
+        phone = normalize_phone(data.get("phone", ""))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     existing = db.query(models.User).filter(
         (models.User.username == data["username"]) | (models.User.email == data["email"])
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Username or email already exists")
+    if db.query(models.User).filter(models.User.phone == phone).first():
+        raise HTTPException(status_code=400, detail="That mobile number is already registered")
 
-    token = generate_verification_token()
     user = models.User(
         username=data["username"],
         email=data["email"],
+        phone=phone,
         hashed_password=hash_password(data["password"]),
         is_verified=False,
-        verification_token=token,
     )
+    code = _issue_phone_code(user)
     db.add(user)
     db.commit()
 
-    base_url = str(request.base_url).rstrip("/")
-    email_sent = send_verification_email(data["email"], token, base_url)
+    sms_sent = send_sms(
+        phone,
+        f"PyUp Order: Tvoj kod je {code}. Upisi ga da aktiviras racun. Vrijedi 10 minuta.",
+    )
+    if not sms_sent:
+        raise HTTPException(
+            status_code=503,
+            detail="Account saved, but the text message could not be sent. Use send again."
+        )
 
     return {
-        "message": "Registration successful. Please check your email to verify your account.",
-        "email_sent": email_sent,
-        **({"dev_verify_token": token} if os.getenv("APP_ENV", "development") == "development" else {}),
+        "message": "Registration successful. Enter the code from the text message.",
+        "sms_sent": True,
+        "phone": phone,
     }
 
 
@@ -132,10 +169,33 @@ def login(data: dict, db: Session = Depends(get_db)):
     if not user.is_verified:
         raise HTTPException(
             status_code=403,
-            detail="Please verify your email address before logging in. Check your inbox for the verification link."
+            detail="Enter the code from the text message sent to your mobile number."
         )
     token = create_access_token(user.id)
     return {"access_token": token, "role": user.role, "user_id": user.id}
+
+
+@app.post("/verify-phone")
+def verify_phone(data: dict, db: Session = Depends(get_db)):
+    from datetime import datetime
+    username = (data.get("username") or "").strip()
+    code = (data.get("code") or "").strip()
+    user = db.query(models.User).filter(models.User.username == username).first()
+    if not user or not user.phone_code or not code.isdigit():
+        raise HTTPException(status_code=400, detail="That code is not valid.")
+    try:
+        expires = datetime.fromisoformat(user.phone_code_expires or "")
+    except ValueError:
+        expires = datetime.utcnow()
+    if datetime.utcnow() > expires:
+        raise HTTPException(status_code=400, detail="That code has expired. Send a new one.")
+    if hash_phone_code(code) != user.phone_code:
+        raise HTTPException(status_code=400, detail="That code is not valid.")
+    user.is_verified = True
+    user.phone_code = None
+    user.phone_code_expires = None
+    db.commit()
+    return {"message": "Your mobile number is verified. You can log in."}
 
 
 @app.get("/verify-email")
@@ -165,18 +225,22 @@ def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @app.post("/resend-verification")
-def resend_verification(data: dict, request: Request, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == data.get("email", "")).first()
-    if not user:
-        return {"message": "If that email is registered and unverified, a new link has been sent."}
-    if user.is_verified:
-        return {"message": "This account is already verified."}
-    new_token = generate_verification_token()
-    user.verification_token = new_token
+def resend_verification(data: dict, db: Session = Depends(get_db)):
+    username = (data.get("username") or "").strip()
+    user = db.query(models.User).filter(models.User.username == username).first() if username else None
+    if not user or user.is_verified or not user.phone:
+        return {"message": "If that account still needs verification, a new text was sent.", "sms_sent": False}
+    if _phone_code_still_fresh(user):
+        return {"message": "A text was just sent. Wait a few seconds and try again.", "sms_sent": False}
+    code = _issue_phone_code(user)
     db.commit()
-    base_url = str(request.base_url).rstrip("/")
-    send_verification_email(user.email, new_token, base_url)
-    return {"message": "Verification email resent. Please check your inbox."}
+    sms_sent = send_sms(
+        user.phone,
+        f"PyUp Order: Tvoj kod je {code}. Upisi ga da aktiviras racun. Vrijedi 10 minuta.",
+    )
+    if not sms_sent:
+        raise HTTPException(status_code=503, detail="The text message could not be sent.")
+    return {"message": "A new code was sent to your mobile number.", "sms_sent": True}
 
 
 def _verification_page(success: bool, message: str) -> str:
