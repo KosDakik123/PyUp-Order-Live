@@ -7,8 +7,12 @@
 <title>PyUp Order</title>
 <script>
 (function () {
-  if (location.hostname === "kosdakik123.github.io") return;
-  location.replace("https://kosdakik123.github.io/PyUp-Order-Live/");
+  var order = "https://kosdakik123.github.io/PyUp-Order-Live/static/customer.html";
+  if (location.hostname === "kosdakik123.github.io") {
+    location.replace("static/customer.html");
+    return;
+  }
+  location.replace(order);
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
