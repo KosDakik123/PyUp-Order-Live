@@ -43,7 +43,7 @@
 <body>
 <header>
   <a class="logo" href="customer.html">Py<b>Up</b></a>
-  <a class="back" href="customer.html">Stores</a>
+  <a class="back" href="jobs.html">Job board</a>
 </header>
 <main>
   <section>
@@ -122,7 +122,7 @@ async function loadJobs() {
   }
   jobs = await res.json();
   if (!jobs.length) {
-    jobsEl.innerHTML = "<p class='lead'>No deliveries waiting. When someone orders food to an address, it shows up here.</p>";
+    jobsEl.innerHTML = "<p class='lead'>No route yet. <a href='jobs.html'>Pick up a job</a> from the board.</p>";
     return;
   }
   jobsEl.innerHTML = jobs.map((job, i) => `
@@ -134,6 +134,9 @@ async function loadJobs() {
         <button class="ghost" type="button" data-done="${job.id}">Delivered</button>
       </div>
     </article>`).join("");
+  const wanted = new URLSearchParams(location.search).get("job");
+  const picked = jobs.find(job => job.id === wanted);
+  if (picked) focusJob(picked);
 }
 jobsEl.addEventListener("click", (event) => {
   const start = event.target.closest("[data-start]");

@@ -44,6 +44,8 @@ def _migrate(db):
         ("users",    "phone",              "VARCHAR"),
         ("users",    "phone_code",         "VARCHAR"),
         ("users",    "phone_code_expires", "VARCHAR"),
+        ("users",    "display_name",       "VARCHAR"),
+        ("users",    "default_address",    "TEXT"),
         ("orders",   "dest_lat",           "REAL"),
         ("orders",   "dest_lng",           "REAL"),
         ("orders",   "courier_lat",        "REAL"),
@@ -179,6 +181,45 @@ def login(data: dict, db: Session = Depends(get_db)):
         )
     token = create_access_token(user.id)
     return {"access_token": token, "role": user.role, "user_id": user.id}
+
+
+@app.get("/me")
+def get_me(user=Depends(get_current_user)):
+    return {
+        "username": user.username,
+        "email": user.email,
+        "phone": user.phone or "",
+        "display_name": user.display_name or user.username,
+        "default_address": user.default_address or "",
+    }
+
+
+@app.put("/me")
+def update_me(data: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    name = (data.get("display_name") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    address = (data.get("default_address") or "").strip()
+    password = data.get("new_password") or ""
+    if name:
+        user.display_name = name[:80]
+    if phone:
+        taken = db.query(models.User).filter(models.User.phone == phone, models.User.id != user.id).first()
+        if taken:
+            raise HTTPException(status_code=400, detail="That mobile number is already registered")
+        user.phone = phone
+    user.default_address = address or None
+    if password:
+        if len(password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        user.hashed_password = hash_password(password)
+    db.commit()
+    return {
+        "username": user.username,
+        "email": user.email,
+        "phone": user.phone or "",
+        "display_name": user.display_name or user.username,
+        "default_address": user.default_address or "",
+    }
 
 
 @app.post("/verify-phone")
@@ -547,6 +588,65 @@ def list_deliveries(db: Session = Depends(get_db), user=Depends(get_current_user
         row["quantity"] = order.quantity
         rows.append(row)
     return rows
+
+
+@app.get("/jobs")
+def open_jobs(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    orders = (db.query(models.Order)
+              .filter(models.Order.order_type == "delivery")
+              .filter(models.Order.courier_name.is_(None))
+              .filter(models.Order.status.notin_(["Delivered", "On the way", "Picked up"]))
+              .all())
+    rows = []
+    for order in orders:
+        row = _track_dict(order)
+        row["customer_phone"] = order.customer_phone
+        row["quantity"] = order.quantity
+        row["price"] = order.service.price if order.service else None
+        rows.append(row)
+    return rows
+
+
+@app.post("/orders/{order_id}/claim")
+def claim_job(order_id: str, data: dict, db: Session = Depends(get_db), user=Depends(get_current_user)):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if not order or order.order_type != "delivery":
+        raise HTTPException(status_code=404, detail="Delivery not found")
+    if order.courier_name:
+        raise HTTPException(status_code=400, detail="Another courier already picked this up")
+    name = (data.get("name") or user.display_name or user.username or "Courier").strip()
+    order.courier_name = name[:80]
+    order.status = "Picked up"
+    db.commit()
+    return _track_dict(order)
+
+
+@app.post("/demo-delivery")
+def demo_delivery(db: Session = Depends(get_db), user=Depends(get_current_user)):
+    service = db.query(models.Service).first()
+    if not service:
+        raise HTTPException(status_code=400, detail="Add a menu item before creating a sample delivery")
+    address = "Trg bana Jelačića 1, Zagreb"
+    order = models.Order(
+        user_id=user.id, service_id=service.id, store_id=service.store_id,
+        order_type="delivery", delivery_address=address,
+        customer_name="Test buyer", customer_phone="+385919850571",
+        notes="Sample job for a demo", quantity=1, status="Pending",
+    )
+    point = _geocode(address)
+    if point:
+        order.dest_lat, order.dest_lng = point
+        order.courier_lat = point[0] + 0.018
+        order.courier_lng = point[1] + 0.012
+        order.eta_minutes = _eta_minutes(order.courier_lat, order.courier_lng, point[0], point[1])
+    else:
+        order.eta_minutes = 15
+    db.add(order)
+    db.commit()
+    row = _track_dict(order)
+    row["quantity"] = 1
+    row["price"] = service.price
+    return row
 
 
 @app.post("/orders/{order_id}/location")

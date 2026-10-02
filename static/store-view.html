@@ -811,6 +811,14 @@ async function placeOrder() {
 }
 
 loadStore();
+(function () {
+  const addr = localStorage.getItem("pyup-address");
+  const name = localStorage.getItem("pyup-display-name") || localStorage.getItem("customerName");
+  const phone = localStorage.getItem("pyup-phone");
+  if (addr) document.getElementById("delivAddr").value = addr;
+  if (name) document.getElementById("custName").value = name;
+  if (phone) document.getElementById("custPhone").value = phone;
+})();
 </script>
 </body>
 </html>

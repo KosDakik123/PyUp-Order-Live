@@ -34,6 +34,8 @@ class User(Base):
     phone_code_expires = Column(String, nullable=True)
     is_verified        = Column(Boolean, default=False)
     verification_token = Column(String, nullable=True)
+    display_name       = Column(String, nullable=True)
+    default_address    = Column(Text, nullable=True)
     # ────────────────────────────────────────────────────────────────────────
 
     orders = relationship("Order", back_populates="user", foreign_keys="Order.user_id")

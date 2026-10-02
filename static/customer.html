@@ -47,7 +47,9 @@ nav{
   padding:5px 13px;font-size:.77rem;font-weight:600;transition:opacity .15s;flex-shrink:0}
 .srchwrap button:hover{opacity:.82}
 
-.nav-btns{display:flex;gap:7px;flex-shrink:0}
+.nav-cluster{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.ham{display:none;width:44px;height:44px;border-radius:14px;border:1.5px solid var(--border);
+  background:transparent;color:var(--ink);font-size:1.25rem;align-items:center;justify-content:center;flex-shrink:0}
 .nbtn{padding:7px 15px;border-radius:50px;font-size:.82rem;font-weight:600;
   border:1.5px solid var(--border);background:transparent;color:var(--ink);transition:all .18s}
 .nbtn:hover,.nbtn.solid:hover{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -295,6 +297,7 @@ nav{
 [data-theme="dark"] .toast{background:#f8fafc;color:#0f172a}
 [data-theme="dark"] .sbtn:hover{background:#e8420e;color:#fff;border-color:#e8420e}
 [data-theme="dark"] .card:hover{box-shadow:0 18px 40px rgba(0,0,0,.5)}
+[data-theme="dark"] .ham{background:#1e293b;color:#f8fafc;border-color:#334155}
 [data-theme="dark"] .ddi.danger:hover{background:#3f1d1d}
 
 .card{position:relative}
@@ -318,6 +321,14 @@ nav{
 }
 @media (max-width:700px){
   body{overflow-x:clip}
+  .ham{display:inline-flex;margin-left:auto}
+  nav{position:sticky}
+  .nav-cluster{display:none;order:6;flex:1 1 100%;flex-direction:column;align-items:stretch;gap:8px;padding:4px 0 6px}
+  .nav-cluster.open{display:flex;animation:sheet .28s cubic-bezier(.2,.8,.2,1)}
+  .nav-cluster .nbtn,.nav-cluster .nav-btns{width:100%}
+  .nav-btns{flex-direction:column;margin:0}
+  .nav-btns .nbtn,.upill{width:100%;justify-content:center;min-height:44px}
+  .ddmenu{position:static;min-width:0;box-shadow:none;margin-top:8px}
   .hero{padding:32px 16px 28px}
   .hero h1{letter-spacing:-.8px}
   .hero-s{padding:4px 4px 4px 14px}
@@ -363,17 +374,26 @@ nav{
     <button onclick="runSearch()">Search</button>
   </div>
 
-  <a class="nbtn" href="courier.html">Courier</a>
-  <button id="themeBtn" type="button" class="nbtn" title="Toggle dark mode" style="padding:6px 12px;font-size:1.1rem;flex-shrink:0">🌙</button>
-  <div class="nav-btns" id="navBtns">
-    <button class="nbtn" onclick="openM('loginModal')">Sign In</button>
-    <button class="nbtn solid" onclick="openM('registerModal')">Register</button>
+  <button type="button" class="ham" id="hamBtn" aria-label="Open menu">☰</button>
+  <div class="nav-cluster" id="navCluster">
+    <a class="nbtn" href="jobs.html">Jobs</a>
+    <a class="nbtn" href="courier.html">Courier</a>
+    <button id="themeBtn" type="button" class="nbtn" title="Toggle dark mode" style="padding:6px 12px;font-size:1.1rem;flex-shrink:0">🌙</button>
+    <div class="nav-btns" id="navBtns">
+      <button class="nbtn" onclick="openM('loginModal')">Sign In</button>
+      <button class="nbtn solid" onclick="openM('registerModal')">Register</button>
+    </div>
   </div>
 </nav>
 <script src="theme.js"></script>
 <script>window.themeInit();var tb=document.getElementById('themeBtn');if(tb){tb.textContent=document.documentElement.getAttribute('data-theme')==='dark'?'☀️':'🌙';tb.onclick=function(){var t=window.themeToggle();tb.textContent=t==='dark'?'☀️':'🌙';};}
 function fitChrome(){var n=document.querySelector('nav');if(n)document.documentElement.style.setProperty('--nav-h',n.offsetHeight+'px');}
-fitChrome();window.addEventListener('resize',fitChrome);</script>
+fitChrome();window.addEventListener('resize',fitChrome);
+document.getElementById('hamBtn').onclick=function(){
+  document.getElementById('navCluster').classList.toggle('open');
+  this.textContent=document.getElementById('navCluster').classList.contains('open')?'✕':'☰';
+  fitChrome();
+};</script>
 
 <!-- ══ HERO (shown when NOT logged in) ══ -->
 <section class="hero" id="heroSection">
@@ -495,25 +515,31 @@ fitChrome();window.addEventListener('resize',fitChrome);</script>
 <div class="overlay" id="settingsModal">
   <div class="modal">
     <button class="mclose" onclick="closeM('settingsModal')">✕</button>
-    <h2>⚙️ Settings</h2>
-    <p class="msub">Your account</p>
-    <div class="ssec">
-      <div class="sseclbl">Account</div>
-      <div class="sinfo">
-        <strong>Username:</strong> <span id="sName">—</span><br>
-        <strong>Account type:</strong> Customer
-      </div>
+    <h2>Settings</h2>
+    <p class="msub">What buyers use when they order</p>
+    <div class="merr" id="setErr"></div>
+    <div class="mfield">
+      <label>Name on orders</label>
+      <input type="text" id="setName" placeholder="Your name" autocomplete="name">
     </div>
-    <div class="ssec">
-      <div class="sseclbl">Actions</div>
-      <div class="srow">
-        <div class="srow-l"><strong>My Orders</strong><small>View your order history</small></div>
-        <button class="sbtn" onclick="closeM('settingsModal');showOrders()">View →</button>
-      </div>
+    <div class="mfield">
+      <label>Mobile number</label>
+      <input type="tel" id="setPhone" placeholder="091 000 0000" autocomplete="tel">
     </div>
+    <div class="mfield">
+      <label>Delivery address</label>
+      <input type="text" id="setAddress" placeholder="Street, city" autocomplete="street-address">
+    </div>
+    <div class="mfield">
+      <label>New password</label>
+      <input type="password" id="setPass" placeholder="Leave blank to keep the current one" autocomplete="new-password">
+    </div>
+    <p class="msub" id="setUser"></p>
+    <button class="mbtn" id="setSave" onclick="saveSettings()">Save settings</button>
+    <button class="sbtn" style="margin-top:10px" onclick="closeM('settingsModal');showOrders()">My orders</button>
     <button class="mbtn" onclick="doLogout()"
-      style="background:#fff;color:#dc2626;border:1.5px solid #fca5a5">
-      🚪 Sign Out
+      style="margin-top:10px;background:#fff;color:#dc2626;border:1.5px solid #fca5a5">
+      Sign out
     </button>
   </div>
 </div>
@@ -664,8 +690,8 @@ function buildNav() {
     </div>`;
 
   // Update settings modal name field
-  const sn = document.getElementById('sName');
-  if (sn) sn.textContent = name;
+  const sn = document.getElementById('setUser');
+  if (sn) sn.textContent = 'Signed in as ' + name;
 }
 
 function stopBubble(e) { e.stopPropagation(); }
@@ -681,9 +707,60 @@ document.addEventListener('click', () => {
 });
 
 function openSettings() {
-  const sn = document.getElementById('sName');
-  if (sn) sn.textContent = getUser() || '—';
+  const sn = document.getElementById('setUser');
+  if (sn) sn.textContent = 'Signed in as ' + (getUser() || '—');
   openM('settingsModal');
+  loadSettings();
+}
+
+async function loadSettings() {
+  if (!getToken()) return;
+  try {
+    const res = await fetch(API + '/me', { headers: { 'Authorization': 'Bearer ' + getToken() } });
+    if (!res.ok) return;
+    const me = await res.json();
+    document.getElementById('setName').value = me.display_name || '';
+    document.getElementById('setPhone').value = me.phone || '';
+    document.getElementById('setAddress').value = me.default_address || '';
+    document.getElementById('setUser').textContent = 'Signed in as ' + me.username;
+    if (me.default_address) localStorage.setItem('pyup-address', me.default_address);
+    if (me.display_name) localStorage.setItem('pyup-display-name', me.display_name);
+    if (me.phone) localStorage.setItem('pyup-phone', me.phone);
+  } catch (err) { console.error(err); }
+}
+
+async function saveSettings() {
+  hideErr('setErr');
+  const btn = document.getElementById('setSave');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch(API + '/me', {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        display_name: document.getElementById('setName').value.trim(),
+        phone: document.getElementById('setPhone').value.trim(),
+        default_address: document.getElementById('setAddress').value.trim(),
+        new_password: document.getElementById('setPass').value
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { showErr('setErr', data.detail || 'Could not save.'); return; }
+    localStorage.setItem('pyup-address', data.default_address || '');
+    localStorage.setItem('pyup-display-name', data.display_name || '');
+    localStorage.setItem('pyup-phone', data.phone || '');
+    if (data.display_name) localStorage.setItem('customerName', data.display_name);
+    document.getElementById('setPass').value = '';
+    toast('Settings saved');
+    buildNav();
+    closeM('settingsModal');
+  } catch (err) {
+    showErr('setErr', 'Cannot reach the server.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save settings';
+  }
 }
 
 // ════════════════════════════════════════════════
